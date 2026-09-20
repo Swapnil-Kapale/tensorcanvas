@@ -1,13 +1,18 @@
 [project]
 name = "tensorcanvas-server"
 version = "0.1.0"
-description = "Add your description here"
+description = "TensorCanvas backend — build and inspect neural networks from a JSON graph."
 readme = "README.md"
 authors = [
-    { name = "Aryan Sanjay Tandon", email = "aryan.sanjay.tandon@sap.com" }
+    { name = "Swapnil Kapale", email = "swapnilkapaledev@gmail.com" },
+    { name = "Aryan Tandon", email = "aryan.tandon03@gmail.com" },
 ]
 requires-python = ">=3.12"
-dependencies = []
+dependencies = [
+    "fastapi>=0.165.0",
+    "torch>=2.15.0",
+    "uvicorn[standard]>=0.54.0",
+]
 
 [project.scripts]
 tensorcanvas-server = "tensorcanvas_server:main"
@@ -15,3 +20,12 @@ tensorcanvas-server = "tensorcanvas_server:main"
 [build-system]
 requires = ["uv_build>=0.12.5,<0.13.0"]
 build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "httpx>=0.28.1",
+    "pytest>=9.2.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
