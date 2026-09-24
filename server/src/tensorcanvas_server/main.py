@@ -15,6 +15,7 @@ from __future__ import annotations
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from torch import nn
 
 from .builder import BuildFailed, build_network, count_parameters
 from .registry import registry
@@ -25,6 +26,9 @@ from .schema import (
     NetworkSpec,
     NodeInfo,
 )
+
+# Echo full weight values only for small layers, to bound the response payload.
+_WEIGHT_ECHO_LIMIT = 4096
 
 app = FastAPI(
     title="TensorCanvas API",
@@ -71,18 +75,30 @@ def build_model(spec: NetworkSpec):
         return JSONResponse(status_code=422, content=failure.model_dump())
 
     model_id = registry.add(built)
-    nodes = [
-        NodeInfo(
-            id=nid,
-            type=built.node_types[nid],
-            output_shape=list(built.output_shapes[nid]),
-            num_parameters=count_parameters(built.module.layers[nid]),
-        )
-        for nid in built.order
-    ]
+    nodes = [_node_info(built, nid) for nid in built.order]
     return BuildSuccess(
         model_id=model_id,
         name=built.name,
         num_parameters=count_parameters(built.module),
         nodes=nodes,
     )
+
+
+def _node_info(built, nid: str) -> NodeInfo:
+    core = built.core[nid]
+    info = NodeInfo(
+        id=nid,
+        type=built.node_types[nid],
+        output_shape=list(built.output_shapes[nid]),
+        num_parameters=count_parameters(built.module.layers[nid]),
+    )
+    if isinstance(core, nn.Linear):
+        info.has_bias = core.bias is not None
+        info.weight_shape = [core.out_features, core.in_features]
+        if core.out_features * core.in_features <= _WEIGHT_ECHO_LIMIT:
+            info.weights = core.weight.detach().tolist()
+            if core.bias is not None:
+                info.bias_values = core.bias.detach().tolist()
+    elif isinstance(core, nn.Conv2d):
+        info.has_bias = core.bias is not None
+    return info

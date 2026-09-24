@@ -8,11 +8,10 @@ useful message possible:
    linear chain (v1), and no cycles. All structural problems are collected and
    returned together.
 2. **Shape inference** — walk the chain from the input shape, computing each
-   node's output shape and validating compatibility (this is where "Linear
-   expects 1-D input" style errors come from). Fails at the first bad node,
-   since everything downstream depends on it.
+   node's output shape and validating compatibility.
 3. **Construction** — instantiate the real ``torch.nn`` modules with the
-   inferred dimensions and wrap them in a :class:`GraphModule`.
+   inferred dimensions (applying bias / activation / initial weights) and wrap
+   them in a :class:`GraphModule`.
 
 ``in_features`` / ``in_channels`` are never supplied by the client; they are
 inferred in pass 2.
@@ -21,15 +20,13 @@ inferred in pass 2.
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 import torch
 from torch import nn
 
 from .schema import NetworkSpec
 
-# Node ids become ``nn.ModuleDict`` keys, which may not contain "." and must be
-# non-empty. Keep them to a sane, canvas-friendly character set.
 _ID_RE = re.compile(r"^[A-Za-z0-9_\-]+$")
 
 Shape = tuple[int, ...]  # a tensor shape WITHOUT the leading batch dimension
@@ -37,26 +34,18 @@ Shape = tuple[int, ...]  # a tensor shape WITHOUT the leading batch dimension
 
 @dataclass
 class BuildProblem:
-    """A single validation error (mirrors schema.BuildError)."""
-
     code: str
     message: str
     node_id: str | None = None
 
 
 class BuildFailed(Exception):
-    """Raised when a network cannot be built. Carries structured problems."""
-
     def __init__(self, problems: list[BuildProblem]):
         self.problems = problems
         super().__init__(f"{len(problems)} problem(s) building network")
 
 
-# ── Layer catalogue ────────────────────────────────────────────────────────
-# Each entry knows how to (a) infer its output shape from its input shape and
-# params, and (b) construct the corresponding torch module. Inference functions
-# raise ValueError with a human message; the caller attaches the node id.
-
+# ── small param helpers ──────────────────────────────────────────────────────
 
 def _as_int(params: dict, key: str, node_id: str, *, required=True, default=None) -> int:
     if key not in params:
@@ -69,20 +58,117 @@ def _as_int(params: dict, key: str, node_id: str, *, required=True, default=None
     return val
 
 
+def _as_bool(params: dict, key: str, *, default: bool = True) -> bool:
+    if key not in params or params[key] is None:
+        return default
+    val = params[key]
+    if not isinstance(val, bool):
+        raise ValueError(f"parameter '{key}' must be a boolean, got {val!r}")
+    return val
+
+
 def _conv_out(size: int, kernel: int, stride: int, padding: int) -> int:
     return (size + 2 * padding - kernel) // stride + 1
 
 
+# ── activations (usable as a layer's `activation` attribute) ─────────────────
+
+ACTIVATIONS: dict[str, object] = {
+    "none": None,
+    "linear": None,
+    "relu": nn.ReLU,
+    "sigmoid": nn.Sigmoid,
+    "tanh": nn.Tanh,
+    "softmax": lambda: nn.Softmax(dim=-1),
+}
+
+
+def _make_activation(params: dict) -> nn.Module | None:
+    name = params.get("activation", "none")
+    if name is None:
+        return None
+    if not isinstance(name, str):
+        raise ValueError(f"'activation' must be a string, got {name!r}")
+    key = name.lower()
+    if key not in ACTIVATIONS:
+        raise ValueError(
+            f"unknown activation {name!r}; choose from "
+            f"{', '.join(sorted(set(ACTIVATIONS)))}"
+        )
+    factory = ACTIVATIONS[key]
+    return None if factory is None else factory()  # type: ignore[operator]
+
+
+def _wrap_activation(layer: nn.Module, params: dict) -> nn.Module:
+    act = _make_activation(params)
+    return layer if act is None else nn.Sequential(layer, act)
+
+
+def core_layer(module: nn.Module) -> nn.Module:
+    """The primary layer inside a built module (unwraps the activation)."""
+    return module[0] if isinstance(module, nn.Sequential) else module
+
+
+# ── initial weights/bias for Linear ──────────────────────────────────────────
+
+def _to_tensor_2d(v: object, name: str) -> torch.Tensor:
+    if not isinstance(v, list) or not v or not all(isinstance(r, list) for r in v):
+        raise ValueError(f"'{name}' must be a 2-D array (a list of rows)")
+    width = len(v[0])
+    for r in v:
+        if len(r) != width:
+            raise ValueError(f"'{name}' rows must all have the same length")
+        if not all(isinstance(x, (int, float)) and not isinstance(x, bool) for x in r):
+            raise ValueError(f"'{name}' must contain only numbers")
+    return torch.tensor(v, dtype=torch.float32)
+
+
+def _to_tensor_1d(v: object, name: str) -> torch.Tensor:
+    if not isinstance(v, list) or not all(
+        isinstance(x, (int, float)) and not isinstance(x, bool) for x in v
+    ):
+        raise ValueError(f"'{name}' must be a 1-D array of numbers")
+    return torch.tensor(v, dtype=torch.float32)
+
+
+def _apply_linear_init(layer: nn.Linear, params: dict) -> None:
+    if params.get("init_weights") is not None:
+        t = _to_tensor_2d(params["init_weights"], "init_weights")
+        exp = (layer.out_features, layer.in_features)
+        if tuple(t.shape) != exp:
+            raise ValueError(
+                f"'init_weights' shape {tuple(t.shape)} does not match expected "
+                f"{exp} (out_features × in_features)"
+            )
+        with torch.no_grad():
+            layer.weight.copy_(t)
+    if params.get("init_bias") is not None:
+        if layer.bias is None:
+            raise ValueError("'init_bias' was given but bias is disabled for this layer")
+        t = _to_tensor_1d(params["init_bias"], "init_bias")
+        exp = (layer.out_features,)
+        if tuple(t.shape) != exp:
+            raise ValueError(
+                f"'init_bias' shape {tuple(t.shape)} does not match expected {exp}"
+            )
+        with torch.no_grad():
+            layer.bias.copy_(t)
+
+
+# ── Layer catalogue ──────────────────────────────────────────────────────────
+# infer(in_shape, params, node_id) -> out_shape ; build(in_shape, out_shape, params) -> nn.Module
+# Inference / build raise ValueError with a human message; the caller attaches the node id.
+
 @dataclass
 class LayerDef:
-    infer: callable  # (in_shape, params, node_id) -> out_shape
-    build: callable  # (in_shape, params) -> nn.Module
+    infer: object
+    build: object
 
 
 def _infer_input(in_shape, params, node_id):
     shape = params.get("shape")
     if not isinstance(shape, list) or not shape or not all(
-        isinstance(d, int) and d > 0 for d in shape
+        isinstance(d, int) and not isinstance(d, bool) and d > 0 for d in shape
     ):
         raise ValueError(
             "input node requires a 'shape' list of positive integers "
@@ -117,9 +203,8 @@ def _infer_conv2d(in_shape, params, node_id):
     out_w = _conv_out(w, kernel, stride, padding)
     if out_h <= 0 or out_w <= 0:
         raise ValueError(
-            f"kernel_size={kernel} (stride={stride}, padding={padding}) is too "
-            f"large for input {in_shape}: resulting size would be "
-            f"{out_h}x{out_w}."
+            f"kernel_size={kernel} (stride={stride}, padding={padding}) is too large "
+            f"for input {in_shape}: resulting size would be {out_h}x{out_w}."
         )
     return (out_channels, out_h, out_w)
 
@@ -135,9 +220,7 @@ def _infer_maxpool2d(in_shape, params, node_id):
     out_h = _conv_out(h, kernel, stride, 0)
     out_w = _conv_out(w, kernel, stride, 0)
     if out_h <= 0 or out_w <= 0:
-        raise ValueError(
-            f"kernel_size={kernel} is too large for input {in_shape}."
-        )
+        raise ValueError(f"kernel_size={kernel} is too large for input {in_shape}.")
     return (c, out_h, out_w)
 
 
@@ -152,39 +235,43 @@ def _identity_shape(in_shape, params, node_id):
     return in_shape
 
 
+def _build_linear(in_shape, out_shape, params):
+    bias = _as_bool(params, "bias", default=True)
+    layer = nn.Linear(in_shape[0], out_shape[0], bias=bias)
+    _apply_linear_init(layer, params)
+    return _wrap_activation(layer, params)
+
+
+def _build_conv2d(in_shape, out_shape, params):
+    bias = _as_bool(params, "bias", default=True)
+    layer = nn.Conv2d(
+        in_shape[0], params["out_channels"], params["kernel_size"],
+        stride=params.get("stride", 1), padding=params.get("padding", 0), bias=bias,
+    )
+    return _wrap_activation(layer, params)
+
+
 LAYERS: dict[str, LayerDef] = {
-    "input": LayerDef(_infer_input, lambda s, p: nn.Identity()),
-    "output": LayerDef(_identity_shape, lambda s, p: nn.Identity()),
-    "linear": LayerDef(
-        _infer_linear, lambda s, p: nn.Linear(s[0], p["out_features"])
-    ),
-    "conv2d": LayerDef(
-        _infer_conv2d,
-        lambda s, p: nn.Conv2d(
-            s[0], p["out_channels"], p["kernel_size"],
-            stride=p.get("stride", 1), padding=p.get("padding", 0),
-        ),
-    ),
+    "input": LayerDef(_infer_input, lambda i, o, p: nn.Identity()),
+    "output": LayerDef(_identity_shape, lambda i, o, p: _wrap_activation(nn.Identity(), p)),
+    "linear": LayerDef(_infer_linear, _build_linear),
+    "conv2d": LayerDef(_infer_conv2d, _build_conv2d),
     "maxpool2d": LayerDef(
         _infer_maxpool2d,
-        lambda s, p: nn.MaxPool2d(p["kernel_size"], stride=p.get("stride", p["kernel_size"])),
+        lambda i, o, p: nn.MaxPool2d(p["kernel_size"], stride=p.get("stride", p["kernel_size"])),
     ),
-    "flatten": LayerDef(_infer_flatten, lambda s, p: nn.Flatten(start_dim=1)),
-    "relu": LayerDef(_identity_shape, lambda s, p: nn.ReLU()),
-    "sigmoid": LayerDef(_identity_shape, lambda s, p: nn.Sigmoid()),
-    "tanh": LayerDef(_identity_shape, lambda s, p: nn.Tanh()),
-    "softmax": LayerDef(_identity_shape, lambda s, p: nn.Softmax(dim=-1)),
+    "flatten": LayerDef(_infer_flatten, lambda i, o, p: nn.Flatten(start_dim=1)),
+    "relu": LayerDef(_identity_shape, lambda i, o, p: nn.ReLU()),
+    "sigmoid": LayerDef(_identity_shape, lambda i, o, p: nn.Sigmoid()),
+    "tanh": LayerDef(_identity_shape, lambda i, o, p: nn.Tanh()),
+    "softmax": LayerDef(_identity_shape, lambda i, o, p: nn.Softmax(dim=-1)),
 }
 
 
 # ── The executable model ─────────────────────────────────────────────────────
 
 class GraphModule(nn.Module):
-    """Runs the built layers in topological order, following the chain.
-
-    Intermediate outputs are kept in a dict during ``forward`` keyed by node id
-    — the hook point future "Observe"/"Intervene" features will build on.
-    """
+    """Runs the built layers in topological order, following the chain."""
 
     def __init__(
         self,
@@ -217,9 +304,10 @@ class BuiltModel:
     order: list[str]
     node_types: dict[str, str]
     output_shapes: dict[str, Shape]
+    core: dict[str, nn.Module]  # node id -> primary layer (activation unwrapped)
 
 
-# ── The three passes ─────────────────────────────────────────────────────────
+# ── validation (unchanged structure checks) ──────────────────────────────────
 
 def _validate_structure(spec: NetworkSpec) -> list[BuildProblem]:
     problems: list[BuildProblem] = []
@@ -228,7 +316,6 @@ def _validate_structure(spec: NetworkSpec) -> list[BuildProblem]:
     if not spec.nodes:
         return [BuildProblem("empty", "The network has no nodes.")]
 
-    # id sanity + duplicates
     seen: set[str] = set()
     for n in spec.nodes:
         if not _ID_RE.match(n.id):
@@ -238,49 +325,39 @@ def _validate_structure(spec: NetworkSpec) -> list[BuildProblem]:
                 n.id,
             ))
         if n.id in seen:
-            problems.append(BuildProblem(
-                "duplicate_id", f"Duplicate node id {n.id!r}.", n.id))
+            problems.append(BuildProblem("duplicate_id", f"Duplicate node id {n.id!r}.", n.id))
         seen.add(n.id)
         if n.type not in LAYERS:
             problems.append(BuildProblem(
                 "unknown_type",
-                f"Unknown layer type {n.type!r}. Supported: "
-                f"{', '.join(sorted(LAYERS))}.",
+                f"Unknown layer type {n.type!r}. Supported: {', '.join(sorted(LAYERS))}.",
                 n.id,
             ))
 
     id_set = set(ids)
     for e in spec.edges:
         if e.source not in id_set:
-            problems.append(BuildProblem(
-                "bad_edge", f"Edge source {e.source!r} is not a node.", e.source))
+            problems.append(BuildProblem("bad_edge", f"Edge source {e.source!r} is not a node.", e.source))
         if e.target not in id_set:
-            problems.append(BuildProblem(
-                "bad_edge", f"Edge target {e.target!r} is not a node.", e.target))
+            problems.append(BuildProblem("bad_edge", f"Edge target {e.target!r} is not a node.", e.target))
 
     inputs = [n.id for n in spec.nodes if n.type == "input"]
     outputs = [n.id for n in spec.nodes if n.type == "output"]
     if len(inputs) != 1:
         problems.append(BuildProblem(
-            "input_count",
-            f"Exactly one 'input' node is required; found {len(inputs)}."))
+            "input_count", f"Exactly one 'input' node is required; found {len(inputs)}."))
     if len(outputs) != 1:
         problems.append(BuildProblem(
-            "output_count",
-            f"Exactly one 'output' node is required; found {len(outputs)}."))
+            "output_count", f"Exactly one 'output' node is required; found {len(outputs)}."))
 
-    # Stop here if anything above is wrong — degree/cycle checks assume a clean
-    # node/edge set.
     if problems:
         return problems
 
-    indeg: dict[str, int] = {i: 0 for i in ids}
-    outdeg: dict[str, int] = {i: 0 for i in ids}
-    pred: dict[str, list[str]] = {i: [] for i in ids}
+    indeg = {i: 0 for i in ids}
+    outdeg = {i: 0 for i in ids}
     for e in spec.edges:
         outdeg[e.source] += 1
         indeg[e.target] += 1
-        pred[e.target].append(e.source)
 
     input_id, output_id = inputs[0], outputs[0]
     for n in spec.nodes:
@@ -289,30 +366,27 @@ def _validate_structure(spec: NetworkSpec) -> list[BuildProblem]:
         if indeg[n.id] != exp_in:
             problems.append(BuildProblem(
                 "bad_degree",
-                f"Node {n.id!r} should have {exp_in} incoming connection(s), "
-                f"has {indeg[n.id]}. (v1 supports a single linear chain.)",
+                f"Node {n.id!r} should have {exp_in} incoming connection(s), has "
+                f"{indeg[n.id]}. (v1 supports a single linear chain.)",
                 n.id,
             ))
         if outdeg[n.id] != exp_out:
             problems.append(BuildProblem(
                 "bad_degree",
-                f"Node {n.id!r} should have {exp_out} outgoing connection(s), "
-                f"has {outdeg[n.id]}. (v1 supports a single linear chain.)",
+                f"Node {n.id!r} should have {exp_out} outgoing connection(s), has "
+                f"{outdeg[n.id]}. (v1 supports a single linear chain.)",
                 n.id,
             ))
     if problems:
         return problems
 
-    # Cycle / reachability: walk the unique chain from the input.
     order: list[str] = []
     cur: str | None = input_id
     visited: set[str] = set()
     succ = {e.source: e.target for e in spec.edges}
     while cur is not None:
         if cur in visited:
-            problems.append(BuildProblem(
-                "cycle", "The network contains a cycle."))
-            return problems
+            return [BuildProblem("cycle", "The network contains a cycle.")]
         visited.add(cur)
         order.append(cur)
         cur = succ.get(cur)
@@ -327,8 +401,6 @@ def _validate_structure(spec: NetworkSpec) -> list[BuildProblem]:
 
 
 def build_network(spec: NetworkSpec) -> BuiltModel:
-    """Validate and build. Raises :class:`BuildFailed` with structured problems."""
-
     problems = _validate_structure(spec)
     if problems:
         raise BuildFailed(problems)
@@ -338,7 +410,6 @@ def build_network(spec: NetworkSpec) -> BuiltModel:
     output_id = next(n.id for n in spec.nodes if n.type == "output")
     succ = {e.source: e.target for e in spec.edges}
 
-    # Chain order from input.
     order: list[str] = []
     pred: dict[str, str | None] = {input_id: None}
     cur: str | None = input_id
@@ -348,27 +419,29 @@ def build_network(spec: NetworkSpec) -> BuiltModel:
         pred[cur] = prev
         prev, cur = cur, succ.get(cur)
 
-    # Pass 2 + 3: infer shapes and construct modules along the chain.
     layers: dict[str, nn.Module] = {}
+    core: dict[str, nn.Module] = {}
     output_shapes: dict[str, Shape] = {}
     in_shape: Shape = ()
     for nid in order:
         node = nodes[nid]
-        layer = LAYERS[node.type]
+        layerdef = LAYERS[node.type]
         try:
-            out_shape = layer.infer(in_shape, node.params, nid)
+            out_shape = layerdef.infer(in_shape, node.params, nid)
         except ValueError as exc:
             raise BuildFailed([BuildProblem("shape_mismatch", str(exc), nid)]) from exc
         try:
-            module = layer.build(out_shape if node.type == "input" else in_shape, node.params)
+            module = layerdef.build(in_shape, out_shape, node.params)
+        except ValueError as exc:
+            raise BuildFailed([BuildProblem("shape_mismatch", str(exc), nid)]) from exc
         except Exception as exc:  # pragma: no cover - defensive
             raise BuildFailed([BuildProblem("build_error", str(exc), nid)]) from exc
         layers[nid] = module
+        core[nid] = core_layer(module)
         output_shapes[nid] = out_shape
         in_shape = out_shape
 
     module = GraphModule(layers, order, pred, input_id, output_id)
-
     built = BuiltModel(
         module=module,
         name=spec.name,
@@ -376,10 +449,9 @@ def build_network(spec: NetworkSpec) -> BuiltModel:
         order=order,
         node_types={n.id: n.type for n in spec.nodes},
         output_shapes=output_shapes,
+        core=core,
     )
 
-    # Final safety net: a real forward pass with a dummy batch. Catches anything
-    # shape inference missed and guarantees the model actually runs.
     try:
         with torch.no_grad():
             dummy = torch.zeros(1, *built.input_shape)

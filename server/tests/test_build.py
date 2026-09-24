@@ -167,3 +167,64 @@ def test_disconnected_node():
     assert r.status_code == 422
     # a self-loop on 'lonely' shows up as a bad-degree / connectivity problem
     assert r.json()["ok"] is False
+
+
+def _tiny(linear_params: dict):
+    return {
+        "nodes": [
+            {"id": "in", "type": "input", "params": {"shape": [2]}},
+            {"id": "fc", "type": "linear", "params": {"out_features": 2, **linear_params}},
+            {"id": "out", "type": "output"},
+        ],
+        "edges": [
+            {"source": "in", "target": "fc"},
+            {"source": "fc", "target": "out"},
+        ],
+    }
+
+
+def _node(body, nid):
+    return next(n for n in body["nodes"] if n["id"] == nid)
+
+
+def test_bias_disabled_reported():
+    r = client.post("/api/v1/models/build", json=_tiny({"bias": False}))
+    assert r.status_code == 200, r.text
+    fc = _node(r.json(), "fc")
+    assert fc["has_bias"] is False
+    assert fc["weight_shape"] == [2, 2]
+    # 2*2 weights only, no bias params
+    assert fc["num_parameters"] == 4
+
+
+def test_init_weights_applied_and_echoed():
+    w = [[1.0, 2.0], [3.0, 4.0]]
+    b = [0.5, -0.5]
+    r = client.post(
+        "/api/v1/models/build",
+        json=_tiny({"init_weights": w, "init_bias": b}),
+    )
+    assert r.status_code == 200, r.text
+    fc = _node(r.json(), "fc")
+    assert fc["weights"] == w
+    assert fc["bias_values"] == b
+
+
+def test_init_weights_wrong_shape():
+    r = client.post(
+        "/api/v1/models/build",
+        json=_tiny({"init_weights": [[1.0, 2.0, 3.0]]}),  # should be 2x2
+    )
+    assert r.status_code == 422
+    err = r.json()["errors"][0]
+    assert err["code"] == "shape_mismatch"
+    assert err["node_id"] == "fc"
+    assert "init_weights" in err["message"]
+
+
+def test_activation_attribute_builds():
+    r = client.post("/api/v1/models/build", json=_tiny({"activation": "softmax"}))
+    assert r.status_code == 200, r.text
+    r2 = client.post("/api/v1/models/build", json=_tiny({"activation": "nope"}))
+    assert r2.status_code == 422
+    assert any("activation" in e["message"] for e in r2.json()["errors"])

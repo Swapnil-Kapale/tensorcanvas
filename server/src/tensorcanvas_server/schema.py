@@ -73,6 +73,13 @@ class NodeInfo(BaseModel):
     type: str
     output_shape: list[int]  # excludes the batch dimension
     num_parameters: int
+    # Introspection for layers that have learnable weights (currently Linear).
+    has_bias: bool | None = None
+    weight_shape: list[int] | None = None  # [out_features, in_features]
+    # Full values are echoed only for small layers (out*in <= 4096) so the
+    # frontend can display / seed them; omitted for large layers.
+    weights: list[list[float]] | None = None
+    bias_values: list[float] | None = None
 
 
 class BuildSuccess(BaseModel):
