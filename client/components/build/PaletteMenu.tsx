@@ -1,13 +1,12 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { CATALOG, CATEGORY_ORDER, type NodeCategory } from "./nodeCatalog";
+import { CATEGORY_ORDER, PALETTE_ITEMS, type NodeCategory, type PaletteItem } from "./nodeCatalog";
 
 export interface PaletteMenuProps {
-  /** Screen coordinates to anchor the menu at. */
   x: number;
   y: number;
-  onPick: (type: string) => void;
+  onPick: (item: PaletteItem) => void;
   onClose: () => void;
 }
 
@@ -33,11 +32,9 @@ export function PaletteMenu({ x, y, onPick, onClose }: PaletteMenuProps) {
       style={{ left: x, top: y }}
       className="fixed z-50 w-52 overflow-hidden rounded-md border border-neutral-700 bg-neutral-900 py-1 text-sm text-neutral-200 shadow-2xl"
     >
-      <div className="px-3 py-1 text-[10px] uppercase tracking-wide text-neutral-500">
-        Add node
-      </div>
+      <div className="px-3 py-1 text-[10px] uppercase tracking-wide text-neutral-500">Add node</div>
       {CATEGORY_ORDER.map((cat: NodeCategory) => {
-        const items = CATALOG.filter((e) => e.category === cat);
+        const items = PALETTE_ITEMS.filter((e) => e.category === cat);
         if (items.length === 0) return null;
         return (
           <div key={cat} className="py-0.5">
@@ -46,8 +43,8 @@ export function PaletteMenu({ x, y, onPick, onClose }: PaletteMenuProps) {
             </div>
             {items.map((e) => (
               <button
-                key={e.type}
-                onClick={() => onPick(e.type)}
+                key={e.label}
+                onClick={() => onPick(e)}
                 className="flex w-full items-center justify-between px-3 py-1.5 text-left hover:bg-neutral-700/70"
               >
                 <span>{e.label}</span>

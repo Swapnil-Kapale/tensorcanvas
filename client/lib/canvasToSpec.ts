@@ -1,21 +1,37 @@
 // Pure serialization: canvas nodes/edges → the backend's network spec.
 
-import type { Edge, Node } from "@xyflow/react";
-import { CATALOG_BY_TYPE, type FlowNodeData } from "@/components/build/nodeCatalog";
+import { CATALOG_BY_TYPE, type FlowNodeData, type ParamRow } from "@/components/build/nodeCatalog";
 import type { NetworkSpecWire, NodeSpecWire } from "@/lib/api";
+import type { TCNode } from "@/lib/store";
 
-/** Coerce a single typed field value to what the backend expects. */
 function coerceField(kind: string, raw: string): unknown {
   const v = (raw ?? "").trim();
-  if (v === "") return undefined; // omit → backend reports "missing required …"
+  if (v === "") return undefined;
   if (kind === "int-list") {
     const parts = v.split(",").map((s) => s.trim()).filter((s) => s !== "");
     const nums = parts.map(Number);
     return parts.length > 0 && nums.every((n) => Number.isInteger(n)) ? nums : v;
   }
-  // number
   const n = Number(v);
   return Number.isNaN(n) ? v : n;
+}
+
+/** Best-effort coercion for free-form Custom-node param values. */
+function coerceLoose(raw: string): unknown {
+  const v = (raw ?? "").trim();
+  if (v === "") return undefined;
+  if (/^-?\d+$/.test(v)) return parseInt(v, 10);
+  if (/^-?\d*\.\d+$/.test(v)) return Number(v);
+  if (v === "true") return true;
+  if (v === "false") return false;
+  if (v[0] === "[" || v[0] === "{") {
+    try {
+      return JSON.parse(v);
+    } catch {
+      /* fall through */
+    }
+  }
+  return v;
 }
 
 function paramsFor(data: FlowNodeData): Record<string, unknown> {
@@ -25,25 +41,37 @@ function paramsFor(data: FlowNodeData): Record<string, unknown> {
     const val = coerceField(f.kind, data.params[f.key] ?? "");
     if (val !== undefined) out[f.key] = val;
   }
+  if (entry?.custom) {
+    for (const row of (data.extra ?? []) as ParamRow[]) {
+      if (!row.key.trim()) continue;
+      const val = coerceLoose(row.value);
+      if (val !== undefined) out[row.key.trim()] = val;
+    }
+  }
   if (entry?.activation && data.activation && data.activation !== "none") {
     out.activation = data.activation;
   }
-  if (entry?.bias && typeof data.bias === "boolean") {
-    out.bias = data.bias;
-  }
+  if (entry?.bias && typeof data.bias === "boolean") out.bias = data.bias;
   if (data.initWeights) out.init_weights = data.initWeights;
   if (data.initBias) out.init_bias = data.initBias;
+  if (data.neuronActivations && data.neuronActivations.some((a) => a)) {
+    out.neuron_activations = data.neuronActivations;
+  }
   return out;
 }
 
+function backendType(data: FlowNodeData): string {
+  return data.type === "custom" ? (data.customType ?? "").trim() : data.type;
+}
+
 export function canvasToSpec(
-  nodes: Node<FlowNodeData>[],
-  edges: Edge[],
+  nodes: TCNode[],
+  edges: { source: string; target: string }[],
   name?: string | null,
 ): NetworkSpecWire {
   const nodeSpecs: NodeSpecWire[] = nodes.map((n) => ({
     id: n.id,
-    type: n.data.type,
+    type: backendType(n.data),
     params: paramsFor(n.data),
   }));
   const edgeSpecs = edges.map((e) => ({ source: e.source, target: e.target }));

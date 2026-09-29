@@ -6,6 +6,7 @@ import {
   CATALOG_BY_TYPE,
   type Activation,
   type FlowNodeData,
+  type ParamRow,
 } from "./nodeCatalog";
 import { WeightMatrix } from "./WeightMatrix";
 
@@ -51,8 +52,10 @@ export function NodeInspector({ node, onChange, onDelete }: NodeInspectorProps) 
 
   const data = node.data;
   const entry = CATALOG_BY_TYPE[data.type];
+  const extra: ParamRow[] = data.extra ?? [];
   const setParam = (key: string, value: string) =>
     onChange(node.id, { params: { ...data.params, [key]: value } });
+  const setExtra = (next: ParamRow[]) => onChange(node.id, { extra: next });
 
   return (
     <div className="flex h-full flex-col">
@@ -64,6 +67,17 @@ export function NodeInspector({ node, onChange, onDelete }: NodeInspectorProps) 
       </div>
 
       <div className="flex-1 space-y-4 overflow-y-auto p-4">
+        {entry?.custom && (
+          <Labeled label="Backend type" help="Any type string. Unknown types are flagged on compile.">
+            <input
+              className={inputCls}
+              value={data.customType ?? ""}
+              placeholder="e.g. dropout"
+              onChange={(e) => onChange(node.id, { customType: e.target.value })}
+            />
+          </Labeled>
+        )}
+
         {(entry?.fields ?? []).map((f) => (
           <Labeled key={f.key} label={f.label} help={f.help}>
             <input
@@ -102,6 +116,53 @@ export function NodeInspector({ node, onChange, onDelete }: NodeInspectorProps) 
             />
             <span className="text-xs font-medium text-neutral-300">Bias</span>
           </label>
+        )}
+
+        {entry?.custom && (
+          <div>
+            <div className="mb-1 flex items-center justify-between">
+              <span className="text-xs font-medium text-neutral-300">Parameters</span>
+              <button
+                className="text-xs text-sky-400 hover:text-sky-300"
+                onClick={() => setExtra([...extra, { key: "", value: "" }])}
+              >
+                + add
+              </button>
+            </div>
+            <div className="space-y-2">
+              {extra.map((row, i) => (
+                <div key={i} className="flex items-center gap-1.5">
+                  <input
+                    className={inputCls + " flex-1"}
+                    placeholder="key"
+                    value={row.key}
+                    onChange={(e) => {
+                      const next = [...extra];
+                      next[i] = { ...row, key: e.target.value };
+                      setExtra(next);
+                    }}
+                  />
+                  <input
+                    className={inputCls + " flex-1"}
+                    placeholder="value"
+                    value={row.value}
+                    onChange={(e) => {
+                      const next = [...extra];
+                      next[i] = { ...row, value: e.target.value };
+                      setExtra(next);
+                    }}
+                  />
+                  <button
+                    className="px-1 text-neutral-500 hover:text-red-400"
+                    onClick={() => setExtra(extra.filter((_, j) => j !== i))}
+                    aria-label="remove param"
+                  >
+                    ✕
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
         )}
 
         {data.type === "linear" && (
