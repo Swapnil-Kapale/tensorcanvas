@@ -83,20 +83,52 @@ ACTIVATIONS: dict[str, object] = {
 }
 
 
-def _make_activation(params: dict) -> nn.Module | None:
-    name = params.get("activation", "none")
+def _activation_by_name(name: object) -> nn.Module | None:
     if name is None:
         return None
     if not isinstance(name, str):
-        raise ValueError(f"'activation' must be a string, got {name!r}")
+        raise ValueError(f"activation must be a string, got {name!r}")
     key = name.lower()
     if key not in ACTIVATIONS:
         raise ValueError(
-            f"unknown activation {name!r}; choose from "
-            f"{', '.join(sorted(set(ACTIVATIONS)))}"
+            f"unknown activation {name!r}; choose from {', '.join(sorted(set(ACTIVATIONS)))}"
         )
     factory = ACTIVATIONS[key]
     return None if factory is None else factory()  # type: ignore[operator]
+
+
+def _make_activation(params: dict) -> nn.Module | None:
+    return _activation_by_name(params.get("activation", "none"))
+
+
+class PerNeuronActivation(nn.Module):
+    """Applies a (possibly different) activation to each output neuron."""
+
+    def __init__(self, acts: list[nn.Module]):
+        super().__init__()
+        self.acts = nn.ModuleList(acts)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:  # x: [..., out_features]
+        cols = [self.acts[i](x[..., i : i + 1]) for i in range(len(self.acts))]
+        return torch.cat(cols, dim=-1)
+
+
+def _make_per_neuron_activation(na: object, out_features: int) -> nn.Module | None:
+    if not isinstance(na, list):
+        raise ValueError("'neuron_activations' must be a list")
+    if len(na) != out_features:
+        raise ValueError(
+            f"'neuron_activations' has length {len(na)} but the layer has "
+            f"{out_features} neurons"
+        )
+    mods: list[nn.Module] = []
+    any_act = False
+    for item in na:
+        m = _activation_by_name(item)
+        mods.append(m if m is not None else nn.Identity())
+        if m is not None:
+            any_act = True
+    return PerNeuronActivation(mods) if any_act else None
 
 
 def _wrap_activation(layer: nn.Module, params: dict) -> nn.Module:
@@ -239,6 +271,10 @@ def _build_linear(in_shape, out_shape, params):
     bias = _as_bool(params, "bias", default=True)
     layer = nn.Linear(in_shape[0], out_shape[0], bias=bias)
     _apply_linear_init(layer, params)
+    na = params.get("neuron_activations")
+    if na is not None:
+        act = _make_per_neuron_activation(na, out_shape[0])
+        return nn.Sequential(layer, act) if act is not None else layer
     return _wrap_activation(layer, params)
 
 

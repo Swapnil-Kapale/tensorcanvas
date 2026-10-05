@@ -84,6 +84,28 @@ def build_model(spec: NetworkSpec):
     )
 
 
+@app.get("/api/v1/models/{model_id}/nodes/{node_id}/weights", tags=["models"])
+def node_weights(model_id: str, node_id: str):
+    """Full weight matrix + bias for one node — used by the weight-edit page for
+    layers too large to echo in the build response."""
+    rec = registry.get(model_id)
+    if rec is None:
+        return JSONResponse(status_code=404, content={"detail": "model not found"})
+    built = rec.built
+    core = built.core.get(node_id)
+    if core is None:
+        return JSONResponse(status_code=404, content={"detail": "node not found"})
+    if not isinstance(core, nn.Linear):
+        return JSONResponse(status_code=400, content={"detail": "node has no weight matrix"})
+    return {
+        "node_id": node_id,
+        "weight_shape": [core.out_features, core.in_features],
+        "has_bias": core.bias is not None,
+        "weights": core.weight.detach().tolist(),
+        "bias_values": core.bias.detach().tolist() if core.bias is not None else None,
+    }
+
+
 def _node_info(built, nid: str) -> NodeInfo:
     core = built.core[nid]
     info = NodeInfo(

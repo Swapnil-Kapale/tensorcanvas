@@ -1,23 +1,17 @@
 "use client";
 
 import { Handle, Position, type Node, type NodeProps } from "@xyflow/react";
-import {
-  ACTIVATION_GLYPH,
-  isExpanded,
-  neuronCount,
-  type FlowNodeData,
-} from "./nodeCatalog";
+import { ACTIVATION_GLYPH, isExpanded, neuronCount, type FlowNodeData } from "./nodeCatalog";
 import { NeuronSphere } from "./NeuronSphere";
 import { useGraph } from "@/lib/store";
 
 type TCNode = Node<FlowNodeData, "tcNode">;
 
-// Geometry for the expanded (per-neuron) layout — handles align to sphere centres.
-const PAD_TOP = 8;
-const HEADER = 24;
+// Geometry for the expanded (per-neuron) layout — handle centres align to circles.
+const HEADER = 22;
 const SPHERE = 28;
 const STRIDE = 36;
-const COL_TOP = PAD_TOP + HEADER;
+const COL_TOP = HEADER;
 
 function neuronMagnitudes(weights: number[][] | null | undefined): number[] | null {
   if (!weights || weights.length === 0) return null;
@@ -38,14 +32,12 @@ function Glyph({ data }: { data: FlowNodeData }) {
   );
 }
 
-function Header({ data }: { data: FlowNodeData }) {
+function Label({ data }: { data: FlowNodeData }) {
   return (
-    <div className="flex items-center justify-between gap-2" style={{ height: HEADER }}>
+    <div className="flex items-center gap-1.5" style={{ height: HEADER }}>
       <span className="text-sm font-semibold">{data.label}</span>
-      <div className="flex items-center gap-1">
-        <Glyph data={data} />
-        {data.bias && <span title="bias" className="h-2 w-2 rounded-full bg-amber-400" />}
-      </div>
+      <Glyph data={data} />
+      {data.bias && <span title="bias" className="h-2 w-2 rounded-full bg-amber-400" />}
     </div>
   );
 }
@@ -79,42 +71,36 @@ function summary(data: FlowNodeData): string | null {
 export function FlowNode({ data, selected }: NodeProps<TCNode>) {
   const threshold = useGraph((s) => s.renderThreshold);
   const hasError = Boolean(data.error);
-  const showTarget = data.type !== "input";
-  const showSource = data.type !== "output";
 
-  const shellCls = [
-    "relative rounded-lg border-2 bg-neutral-900/95 px-3 py-2 text-neutral-100 shadow-lg",
-    "min-w-[140px] transition-colors",
-    hasError ? "border-red-500" : "border-neutral-600",
-    selected ? "ring-2 ring-white/60" : "",
-  ].join(" ");
-
-  // Expanded Dense: one sphere per neuron, each with its own handles.
+  // Expanded Dense: bare flat neurons, NO surrounding box.
   if (data.type === "linear" && isExpanded(data, threshold)) {
     const n = neuronCount(data) ?? 0;
     const mags = neuronMagnitudes(data.weights);
+    const height = COL_TOP + n * STRIDE + 20;
     return (
-      <div className={shellCls} style={{ height: COL_TOP + n * STRIDE + 24 }}>
-        <Header data={data} />
-        <div className="relative" style={{ height: n * STRIDE }}>
-          {Array.from({ length: n }).map((_, i) => (
-            <div
-              key={i}
-              className="absolute left-1/2 -translate-x-1/2"
-              style={{ top: i * STRIDE + (STRIDE - SPHERE) / 2 }}
-            >
-              <NeuronSphere size={SPHERE} mag={mags?.[i] ?? null} />
-            </div>
-          ))}
+      <div className="relative" style={{ width: 120, height }}>
+        <div className={hasError ? "text-red-300" : undefined}>
+          <Label data={data} />
         </div>
-        <Badges data={data} />
+        {Array.from({ length: n }).map((_, i) => (
+          <div
+            key={`c${i}`}
+            className="absolute left-1/2 -translate-x-1/2"
+            style={{ top: COL_TOP + i * STRIDE + (STRIDE - SPHERE) / 2 }}
+          >
+            <NeuronSphere size={SPHERE} mag={mags?.[i] ?? null} selected={!!selected} />
+          </div>
+        ))}
+        <div style={{ position: "absolute", top: COL_TOP + n * STRIDE }}>
+          <Badges data={data} />
+        </div>
         {Array.from({ length: n }).map((_, i) => (
           <Handle
             key={`t${i}`}
             id={`t${i}`}
             type="target"
             position={Position.Left}
-            style={{ top: COL_TOP + i * STRIDE + SPHERE / 2 }}
+            style={{ top: COL_TOP + i * STRIDE + STRIDE / 2 }}
             className="!h-2.5 !w-2.5 !bg-neutral-400"
           />
         ))}
@@ -124,7 +110,7 @@ export function FlowNode({ data, selected }: NodeProps<TCNode>) {
             id={`s${i}`}
             type="source"
             position={Position.Right}
-            style={{ top: COL_TOP + i * STRIDE + SPHERE / 2 }}
+            style={{ top: COL_TOP + i * STRIDE + STRIDE / 2 }}
             className="!h-2.5 !w-2.5 !bg-neutral-400"
           />
         ))}
@@ -132,21 +118,30 @@ export function FlowNode({ data, selected }: NodeProps<TCNode>) {
     );
   }
 
-  // Collapsed Dense: sample spheres + count.
+  // Boxed node (collapsed Dense + all other types).
+  const showTarget = data.type !== "input";
+  const showSource = data.type !== "output";
   const collapsedDense = data.type === "linear";
   const s = summary(data);
   const mags = neuronMagnitudes(data.weights);
+  const shellCls = [
+    "relative rounded-lg border-2 bg-neutral-900/95 px-3 py-2 text-neutral-100 shadow-lg",
+    "min-w-[140px] transition-colors",
+    hasError ? "border-red-500" : "border-neutral-600",
+    selected ? "ring-2 ring-white/60" : "",
+  ].join(" ");
+
   return (
     <div className={shellCls}>
       {showTarget && (
         <Handle id="tc" type="target" position={Position.Left} className="!h-2.5 !w-2.5 !bg-neutral-400" />
       )}
-      <Header data={data} />
+      <Label data={data} />
       {collapsedDense ? (
         <div className="mt-2 flex flex-col items-center gap-1">
           <div className="flex gap-1.5">
             {[0, 1, 2].map((i) => (
-              <NeuronSphere key={i} size={16} mag={mags?.[i] ?? null} />
+              <NeuronSphere key={i} size={14} mag={mags?.[i] ?? null} />
             ))}
           </div>
           <div className="text-center leading-tight">

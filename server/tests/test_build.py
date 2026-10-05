@@ -228,3 +228,33 @@ def test_activation_attribute_builds():
     r2 = client.post("/api/v1/models/build", json=_tiny({"activation": "nope"}))
     assert r2.status_code == 422
     assert any("activation" in e["message"] for e in r2.json()["errors"])
+
+
+def test_per_neuron_activation():
+    r = client.post(
+        "/api/v1/models/build",
+        json=_tiny({"neuron_activations": ["relu", None]}),
+    )
+    assert r.status_code == 200, r.text
+    # wrong length → rejected on that node
+    r2 = client.post(
+        "/api/v1/models/build",
+        json=_tiny({"neuron_activations": ["relu"]}),  # layer has 2 neurons
+    )
+    assert r2.status_code == 422
+    err = r2.json()["errors"][0]
+    assert err["node_id"] == "fc"
+    assert "neuron_activations" in err["message"]
+
+
+def test_node_weights_endpoint():
+    r = client.post("/api/v1/models/build", json=_tiny({}))
+    mid = r.json()["model_id"]
+    w = client.get(f"/api/v1/models/{mid}/nodes/fc/weights")
+    assert w.status_code == 200, w.text
+    body = w.json()
+    assert body["weight_shape"] == [2, 2]
+    assert len(body["weights"]) == 2 and len(body["weights"][0]) == 2
+    # unknown model / node
+    assert client.get("/api/v1/models/nope/nodes/fc/weights").status_code == 404
+    assert client.get(f"/api/v1/models/{mid}/nodes/in/weights").status_code == 400

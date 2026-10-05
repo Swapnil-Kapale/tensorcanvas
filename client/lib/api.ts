@@ -56,8 +56,23 @@ export type BuildResult =
   | ({ status: number } & BuildSuccess)
   | ({ status: number } & BuildFailure);
 
-/** POST a network spec to the backend. Network/parse errors are surfaced as a
- *  BuildFailure so callers only deal with one shape. */
+/** Fetch one node's full weight matrix + bias (for the weight-edit page). */
+export interface NodeWeights {
+  node_id: string;
+  weight_shape: number[];
+  has_bias: boolean;
+  weights: number[][];
+  bias_values: number[] | null;
+}
+
+export async function fetchNodeWeights(
+  modelId: string,
+  nodeId: string,
+): Promise<NodeWeights> {
+  const res = await fetch(`${API_BASE}/api/v1/models/${modelId}/nodes/${nodeId}/weights`);
+  if (!res.ok) throw new Error(`Could not load weights (HTTP ${res.status})`);
+  return (await res.json()) as NodeWeights;
+}
 export async function buildModel(spec: NetworkSpecWire): Promise<BuildResult> {
   try {
     const res = await fetch(`${API_BASE}/api/v1/models/build`, {

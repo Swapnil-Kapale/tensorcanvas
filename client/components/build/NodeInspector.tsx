@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import type { Node } from "@xyflow/react";
 import {
   ACTIVATIONS,
@@ -38,6 +39,7 @@ const inputCls =
   "w-full rounded border border-neutral-700 bg-neutral-800 px-2 py-1.5 text-sm text-neutral-100 outline-none focus:border-sky-500";
 
 export function NodeInspector({ node, onChange, onDelete }: NodeInspectorProps) {
+  const router = useRouter();
   if (!node) {
     return (
       <div className="p-4 text-sm text-neutral-500">
@@ -167,7 +169,15 @@ export function NodeInspector({ node, onChange, onDelete }: NodeInspectorProps) 
 
         {data.type === "linear" && (
           <div>
-            <span className="mb-1 block text-xs font-medium text-neutral-300">Weights</span>
+            <div className="mb-1 flex items-center justify-between">
+              <span className="text-xs font-medium text-neutral-300">Weights</span>
+              <button
+                onClick={() => router.push(`/build/${node.id}`)}
+                className="rounded border border-sky-500/50 px-2 py-0.5 text-xs text-sky-300 hover:bg-sky-500/10"
+              >
+                Edit ↗
+              </button>
+            </div>
             <WeightMatrix
               data={data}
               onSetInit={(initWeights, initBias) => onChange(node.id, { initWeights, initBias })}
