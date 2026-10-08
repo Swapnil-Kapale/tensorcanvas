@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Background,
   Controls,
@@ -32,10 +32,10 @@ import { useGraph, type LogicalEdge, type TCNode } from "@/lib/store";
 const nodeTypes: NodeTypes = { tcNode: FlowNode };
 
 interface MenuState {
-  screenX: number;
-  screenY: number;
-  flowX: number;
-  flowY: number;
+  x: number;
+  y: number;
+  flowX?: number;
+  flowY?: number;
 }
 
 type CompileState =
@@ -64,26 +64,43 @@ function BuildCanvasInner() {
     edges,
     renderThreshold,
     modelName,
+    past,
+    future,
     onNodesChange,
     addNode,
     updateNodeData,
     deleteNode,
+    deleteSelection,
     selectNode,
     connect,
     removeEdges,
     setModelName,
     replaceGraph,
     applyResult,
+    recordNow,
+    undo,
+    redo,
+    save,
+    hydrate,
   } = useGraph();
 
   const [menu, setMenu] = useState<MenuState | null>(null);
+  const [addMenu, setAddMenu] = useState<MenuState | null>(null);
   const [result, setResult] = useState<CompileState>(null);
   const [compiling, setCompiling] = useState(false);
-  const { screenToFlowPosition } = useReactFlow();
+  const [justSaved, setJustSaved] = useState(false);
+  const [selEdge, setSelEdge] = useState<string | null>(null);
+  const { screenToFlowPosition, getNodes } = useReactFlow();
+  const paneRef = useRef<HTMLDivElement>(null);
+  const addOffset = useRef(0);
+
+  // Load the saved graph once (store guards against clobbering on route return).
+  useEffect(() => {
+    hydrate();
+  }, [hydrate]);
 
   const selectedNode = useMemo(() => nodes.find((n) => n.selected) ?? null, [nodes]);
 
-  // Derive the rendered (possibly bipartite) edges from logical layer edges.
   const renderEdges = useMemo<Edge[]>(() => {
     const byId = Object.fromEntries(nodes.map((n) => [n.id, n]));
     const out: Edge[] = [];
@@ -93,6 +110,7 @@ function BuildCanvasInner() {
       if (!a || !b) continue;
       for (const sh of sourcePorts(a.data, renderThreshold)) {
         for (const th of targetPorts(b.data, renderThreshold)) {
+          const selected = le.id === selEdge;
           out.push({
             id: `${le.id}::${sh}>${th}`,
             source: le.source,
@@ -101,20 +119,19 @@ function BuildCanvasInner() {
             targetHandle: th,
             type: "default",
             markerEnd: { type: MarkerType.ArrowClosed },
+            selected,
+            style: selected ? { stroke: "#38bdf8", strokeWidth: 2.5 } : undefined,
           });
         }
       }
     }
     return out;
-  }, [nodes, edges, renderThreshold]);
+  }, [nodes, edges, renderThreshold, selEdge]);
 
   const onEdgesChange = useCallback(
     (changes: EdgeChange[]) => {
       const removed = changes.filter((c) => c.type === "remove").map((c) => c.id);
-      if (removed.length) {
-        const logicalIds = [...new Set(removed.map((id) => id.split("::")[0]))];
-        removeEdges(logicalIds);
-      }
+      if (removed.length) removeEdges([...new Set(removed.map((id) => id.split("::")[0]))]);
     },
     [removeEdges],
   );
@@ -123,19 +140,75 @@ function BuildCanvasInner() {
     (e: React.MouseEvent | MouseEvent) => {
       e.preventDefault();
       const flow = screenToFlowPosition({ x: e.clientX, y: e.clientY });
-      setMenu({ screenX: e.clientX, screenY: e.clientY, flowX: flow.x, flowY: flow.y });
+      setMenu({ x: e.clientX, y: e.clientY, flowX: flow.x, flowY: flow.y });
     },
     [screenToFlowPosition],
   );
 
-  const onPick = useCallback(
+  const onPickAt = useCallback(
     (item: PaletteItem) => {
       if (!menu) return;
-      addNode(item.type, { x: menu.flowX, y: menu.flowY }, item.preset);
+      addNode(item.type, { x: menu.flowX ?? 0, y: menu.flowY ?? 0 }, item.preset);
       setMenu(null);
     },
     [menu, addNode],
   );
+
+  const addAtCenter = useCallback(
+    (item: PaletteItem) => {
+      let pos = { x: 240, y: 160 };
+      const el = paneRef.current;
+      if (el) {
+        const r = el.getBoundingClientRect();
+        pos = screenToFlowPosition({ x: r.left + r.width / 2, y: r.top + r.height / 2 });
+      }
+      const k = addOffset.current++ % 6;
+      addNode(item.type, { x: pos.x + k * 28, y: pos.y + k * 28 }, item.preset);
+      setAddMenu(null);
+    },
+    [screenToFlowPosition, addNode],
+  );
+
+  const doDelete = useCallback(() => {
+    const selNodes = getNodes().filter((n) => n.selected).map((n) => n.id);
+    const edgeIds = selEdge ? [selEdge] : [];
+    deleteSelection(selNodes, edgeIds);
+    setSelEdge(null);
+  }, [getNodes, selEdge, deleteSelection]);
+
+  const saveNow = useCallback(() => {
+    save();
+    setJustSaved(true);
+    window.setTimeout(() => setJustSaved(false), 1500);
+  }, [save]);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const mod = e.metaKey || e.ctrlKey;
+      const t = e.target as HTMLElement | null;
+      const inField =
+        !!t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT" || t.isContentEditable);
+      if (mod && e.key.toLowerCase() === "s") {
+        e.preventDefault();
+        saveNow();
+      } else if (mod && e.key.toLowerCase() === "z") {
+        if (inField) return;
+        e.preventDefault();
+        if (e.shiftKey) redo();
+        else undo();
+      } else if (mod && e.key.toLowerCase() === "y") {
+        if (inField) return;
+        e.preventDefault();
+        redo();
+      } else if (e.key === "Delete" || e.key === "Backspace") {
+        if (inField) return;
+        e.preventDefault();
+        doDelete();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [saveNow, undo, redo, doDelete]);
 
   const clearAll = useCallback(() => {
     replaceGraph([], []);
@@ -175,6 +248,9 @@ function BuildCanvasInner() {
     setResult(null);
   }, [replaceGraph]);
 
+  const tbBtn =
+    "flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-sm text-neutral-300 transition hover:bg-neutral-800 disabled:opacity-30 disabled:hover:bg-transparent";
+
   return (
     <div className="flex h-full min-h-0 flex-col">
       <div className="flex items-center gap-3 border-b border-neutral-800 bg-neutral-950 px-4 py-2">
@@ -191,32 +267,30 @@ function BuildCanvasInner() {
         >
           {compiling ? "Compiling…" : "Compile"}
         </button>
-        <button
-          onClick={loadExample}
-          className="rounded border border-neutral-700 px-3 py-1.5 text-sm text-neutral-300 hover:bg-neutral-800"
-        >
+        <button onClick={loadExample} className="rounded border border-neutral-700 px-3 py-1.5 text-sm text-neutral-300 hover:bg-neutral-800">
           Load example
         </button>
-        <button
-          onClick={clearAll}
-          className="rounded border border-neutral-700 px-3 py-1.5 text-sm text-neutral-300 hover:bg-neutral-800"
-        >
+        <button onClick={clearAll} className="rounded border border-neutral-700 px-3 py-1.5 text-sm text-neutral-300 hover:bg-neutral-800">
           Clear
         </button>
         <span className="ml-auto text-xs text-neutral-500">Right-click the canvas to add a node</span>
       </div>
 
       <div className="flex min-h-0 flex-1">
-        <div className="relative min-h-0 flex-1">
+        <div ref={paneRef} className="relative min-h-0 flex-1">
           <ReactFlow
             nodes={nodes}
             edges={renderEdges}
             onNodesChange={onNodesChange}
             onEdgesChange={onEdgesChange}
             onConnect={connect}
+            onNodeDragStart={() => recordNow()}
+            onEdgeClick={(_, edge) => setSelEdge(edge.id.split("::")[0])}
+            onNodeClick={() => setSelEdge(null)}
+            onPaneClick={() => setSelEdge(null)}
             onPaneContextMenu={onPaneContextMenu}
             nodeTypes={nodeTypes}
-            deleteKeyCode={["Backspace", "Delete"]}
+            deleteKeyCode={null}
             fitView
             proOptions={{ hideAttribution: true }}
           >
@@ -225,8 +299,39 @@ function BuildCanvasInner() {
             <MiniMap pannable zoomable className="!bg-neutral-800" />
           </ReactFlow>
 
+          {/* Floating canvas toolbar */}
+          <div className="absolute bottom-4 left-1/2 z-20 flex -translate-x-1/2 items-center gap-1 rounded-xl border border-neutral-700/80 bg-neutral-900/90 p-1.5 shadow-2xl backdrop-blur">
+            <button
+              className={tbBtn + " font-medium text-neutral-100"}
+              onClick={(e) => {
+                const r = e.currentTarget.getBoundingClientRect();
+                setAddMenu({ x: r.left, y: Math.max(8, r.top - 320) });
+              }}
+              title="Add a node"
+            >
+              <span className="text-sky-400">＋</span> Add
+            </button>
+            <div className="mx-1 h-5 w-px bg-neutral-700" />
+            <button className={tbBtn} onClick={doDelete} title="Delete selection (⌫)">
+              Delete
+            </button>
+            <button className={tbBtn} onClick={undo} disabled={past.length === 0} title="Undo (⌘Z)">
+              ↶
+            </button>
+            <button className={tbBtn} onClick={redo} disabled={future.length === 0} title="Redo (⌘⇧Z)">
+              ↷
+            </button>
+            <div className="mx-1 h-5 w-px bg-neutral-700" />
+            <button className={tbBtn} onClick={saveNow} title="Save (⌘S)">
+              {justSaved ? <span className="text-emerald-400">Saved ✓</span> : "Save"}
+            </button>
+          </div>
+
           {menu && (
-            <PaletteMenu x={menu.screenX} y={menu.screenY} onPick={onPick} onClose={() => setMenu(null)} />
+            <PaletteMenu x={menu.x} y={menu.y} onPick={onPickAt} onClose={() => setMenu(null)} />
+          )}
+          {addMenu && (
+            <PaletteMenu x={addMenu.x} y={addMenu.y} onPick={addAtCenter} onClose={() => setAddMenu(null)} />
           )}
 
           {result && (
@@ -273,7 +378,6 @@ function BuildCanvasInner() {
   );
 }
 
-// local helper so loadExample stays pure of hook calls
 export function BuildCanvas() {
   return (
     <ReactFlowProvider>

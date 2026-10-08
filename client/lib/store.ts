@@ -12,8 +12,22 @@ export interface LogicalEdge {
   target: string;
 }
 
-// Minimal node-change applier — this @xyflow/react build does not export
-// applyNodeChanges at runtime, so we handle the change types we rely on.
+interface Snapshot {
+  nodes: TCNode[];
+  edges: LogicalEdge[];
+}
+
+const STORAGE_KEY = "tensorcanvas:graph";
+const HISTORY_LIMIT = 100;
+
+// Push the current graph onto the undo stack and clear redo.
+function pushHistory(s: { past: Snapshot[]; nodes: TCNode[]; edges: LogicalEdge[] }) {
+  return {
+    past: [...s.past, { nodes: s.nodes, edges: s.edges }].slice(-HISTORY_LIMIT),
+    future: [] as Snapshot[],
+  };
+}
+
 function applyNodeChangesLocal(changes: NodeChange<TCNode>[], nodes: TCNode[]): TCNode[] {
   if (changes.length === 0) return nodes;
   const map = new Map(nodes.map((n) => [n.id, n] as const));
@@ -62,11 +76,15 @@ interface GraphState {
   modelName: string;
   lastModelId: string | null;
   nextId: number;
+  past: Snapshot[];
+  future: Snapshot[];
+  loaded: boolean;
 
   onNodesChange: (changes: NodeChange<TCNode>[]) => void;
   addNode: (type: string, pos: { x: number; y: number }, preset?: Partial<FlowNodeData>) => void;
   updateNodeData: (id: string, patch: Partial<FlowNodeData>) => void;
   deleteNode: (id: string) => void;
+  deleteSelection: (nodeIds: string[], edgeIds: string[]) => void;
   selectNode: (id: string) => void;
   connect: (c: Connection) => void;
   removeEdges: (ids: string[]) => void;
@@ -74,15 +92,23 @@ interface GraphState {
   setModelName: (s: string) => void;
   replaceGraph: (nodes: TCNode[], edges: LogicalEdge[]) => void;
   applyResult: (res: BuildResult) => void;
+  recordNow: () => void;
+  undo: () => void;
+  redo: () => void;
+  save: () => void;
+  hydrate: () => void;
 }
 
-export const useGraph = create<GraphState>((set) => ({
+export const useGraph = create<GraphState>((set, get) => ({
   nodes: [],
   edges: [],
   renderThreshold: 5,
   modelName: "untitled",
   lastModelId: null,
   nextId: 1,
+  past: [],
+  future: [],
+  loaded: false,
 
   onNodesChange: (changes) =>
     set((s) => {
@@ -97,52 +123,116 @@ export const useGraph = create<GraphState>((set) => ({
   addNode: (type, pos, preset) =>
     set((s) => {
       const id = `${type}-${s.nextId}`;
-      const node: TCNode = {
-        id,
-        type: "tcNode",
-        position: pos,
-        data: defaultDataFor(type, preset),
-        selected: true,
-      };
+      const node: TCNode = { id, type: "tcNode", position: pos, data: defaultDataFor(type, preset), selected: true };
       return {
+        ...pushHistory(s),
         nodes: [...s.nodes.map((n) => ({ ...n, selected: false })), node],
         nextId: s.nextId + 1,
       };
     }),
 
   updateNodeData: (id, patch) =>
-    set((s) => ({
-      nodes: s.nodes.map((n) => (n.id === id ? { ...n, data: { ...n.data, ...patch } } : n)),
-    })),
+    set((s) => ({ nodes: s.nodes.map((n) => (n.id === id ? { ...n, data: { ...n.data, ...patch } } : n)) })),
 
   deleteNode: (id) =>
     set((s) => ({
+      ...pushHistory(s),
       nodes: s.nodes.filter((n) => n.id !== id),
       edges: s.edges.filter((e) => e.source !== id && e.target !== id),
     })),
 
-  selectNode: (id) =>
-    set((s) => ({ nodes: s.nodes.map((n) => ({ ...n, selected: n.id === id })) })),
+  deleteSelection: (nodeIds, edgeIds) =>
+    set((s) => {
+      if (nodeIds.length === 0 && edgeIds.length === 0) return {};
+      const dead = new Set(nodeIds);
+      return {
+        ...pushHistory(s),
+        nodes: s.nodes.filter((n) => !dead.has(n.id)),
+        edges: s.edges.filter(
+          (e) => !edgeIds.includes(e.id) && !dead.has(e.source) && !dead.has(e.target),
+        ),
+      };
+    }),
+
+  selectNode: (id) => set((s) => ({ nodes: s.nodes.map((n) => ({ ...n, selected: n.id === id })) })),
 
   connect: (c) =>
     set((s) => {
       if (!c.source || !c.target || c.source === c.target) return {};
       if (s.edges.some((e) => e.source === c.source && e.target === c.target)) return {};
       return {
-        edges: [
-          ...s.edges,
-          { id: `le-${c.source}-${c.target}`, source: c.source, target: c.target },
-        ],
+        ...pushHistory(s),
+        edges: [...s.edges, { id: `le-${c.source}-${c.target}`, source: c.source, target: c.target }],
       };
     }),
 
   removeEdges: (ids) =>
-    set((s) => ({ edges: s.edges.filter((e) => !ids.includes(e.id)) })),
+    set((s) => (ids.length ? { ...pushHistory(s), edges: s.edges.filter((e) => !ids.includes(e.id)) } : {})),
 
   setThreshold: (n) => set({ renderThreshold: n }),
   setModelName: (s) => set({ modelName: s }),
 
-  replaceGraph: (nodes, edges) => set({ nodes, edges }),
+  replaceGraph: (nodes, edges) => set((s) => ({ ...pushHistory(s), nodes, edges })),
+
+  recordNow: () => set((s) => pushHistory(s)),
+
+  undo: () =>
+    set((s) => {
+      if (s.past.length === 0) return {};
+      const prev = s.past[s.past.length - 1];
+      return {
+        nodes: prev.nodes,
+        edges: prev.edges,
+        past: s.past.slice(0, -1),
+        future: [{ nodes: s.nodes, edges: s.edges }, ...s.future].slice(0, HISTORY_LIMIT),
+      };
+    }),
+
+  redo: () =>
+    set((s) => {
+      if (s.future.length === 0) return {};
+      const next = s.future[0];
+      return {
+        nodes: next.nodes,
+        edges: next.edges,
+        future: s.future.slice(1),
+        past: [...s.past, { nodes: s.nodes, edges: s.edges }].slice(-HISTORY_LIMIT),
+      };
+    }),
+
+  save: () => {
+    if (typeof window === "undefined") return;
+    const s = get();
+    window.localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({
+        nodes: s.nodes,
+        edges: s.edges,
+        modelName: s.modelName,
+        renderThreshold: s.renderThreshold,
+        nextId: s.nextId,
+      }),
+    );
+  },
+
+  hydrate: () => {
+    if (get().loaded || typeof window === "undefined") return;
+    set({ loaded: true });
+    const raw = window.localStorage.getItem(STORAGE_KEY);
+    if (!raw) return;
+    try {
+      const d = JSON.parse(raw);
+      set({
+        nodes: d.nodes ?? [],
+        edges: d.edges ?? [],
+        modelName: d.modelName ?? "untitled",
+        renderThreshold: d.renderThreshold ?? 5,
+        nextId: d.nextId ?? 1,
+      });
+    } catch {
+      /* ignore corrupt storage */
+    }
+  },
 
   applyResult: (res) =>
     set((s) => {
