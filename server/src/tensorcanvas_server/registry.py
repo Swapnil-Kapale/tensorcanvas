@@ -21,6 +21,8 @@ class ModelRecord:
     model_id: str
     built: BuiltModel
     created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    # Guards weight reads (e.g. GET /weights) against in-place optimizer.step().
+    train_lock: threading.Lock = field(default_factory=threading.Lock)
 
 
 class ModelRegistry:
