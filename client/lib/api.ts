@@ -1,6 +1,6 @@
 // Client for the TensorCanvas backend build endpoint.
 
-const API_BASE =
+export const API_BASE =
   process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ?? "http://localhost:8000";
 
 // ── Wire types (mirror server/schema.py) ─────────────────────────────────────

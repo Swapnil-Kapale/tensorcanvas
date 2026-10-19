@@ -75,7 +75,7 @@ export function FlowNode({ data, selected }: NodeProps<TCNode>) {
   // Expanded Dense: bare flat neurons, NO surrounding box.
   if (data.type === "linear" && isExpanded(data, threshold)) {
     const n = neuronCount(data) ?? 0;
-    const mags = neuronMagnitudes(data.weights);
+    const mags = data.activationMag ?? neuronMagnitudes(data.weights);
     const height = COL_TOP + n * STRIDE + 20;
     return (
       <div className="relative" style={{ width: 120, height }}>
@@ -123,7 +123,7 @@ export function FlowNode({ data, selected }: NodeProps<TCNode>) {
   const showSource = data.type !== "output";
   const collapsedDense = data.type === "linear";
   const s = summary(data);
-  const mags = neuronMagnitudes(data.weights);
+  const mags = data.activationMag ?? neuronMagnitudes(data.weights);
   const shellCls = [
     "relative rounded-lg border-2 bg-neutral-900/95 px-3 py-2 text-neutral-100 shadow-lg",
     "min-w-[140px] transition-colors",
