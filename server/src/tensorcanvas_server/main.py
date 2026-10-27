@@ -15,12 +15,13 @@ from __future__ import annotations
 import asyncio
 import threading
 
+import torch
 from fastapi import FastAPI, File, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
 from torch import nn
 
-from .builder import BuildFailed, build_network, count_parameters
+from .builder import BuildFailed, build_network, count_parameters, _to_tensor_1d, _to_tensor_2d
 from .datasets import (
     BUILTINS,
     DatasetError,
@@ -30,6 +31,7 @@ from .datasets import (
     match_to_network,
     preview,
 )
+from .observe import run_model, snapshots as snapshot_registry
 from .registry import registry
 from .runs import runs as run_registry, sse_stream
 from .training import run_training
@@ -301,4 +303,93 @@ def restore_checkpoint(run_id: str, ckpt_id: str):
         return JSONResponse(status_code=404, content={"detail": "model not found"})
     if not run.restore(ckpt_id, rec):
         return JSONResponse(status_code=404, content={"detail": "checkpoint not found"})
+    rec.weight_version += 1
     return {"ok": True, "ckpt_id": ckpt_id}
+
+
+# ── Observe / run ────────────────────────────────────────────────────────────
+
+@app.post("/api/v1/models/{model_id}/run", tags=["observe"])
+def run_inference(model_id: str, body: dict):
+    rec = registry.get(model_id)
+    if rec is None:
+        return JSONResponse(status_code=404, content={"detail": "model not found"})
+    try:
+        data = run_model(rec, rec.built, body.get("input", {}))
+    except DatasetError as e:
+        return JSONResponse(status_code=422, content={"detail": str(e)})
+    if body.get("save", True):
+        snap = snapshot_registry.add(model_id, data, body.get("label"))
+        return {"snapshot_id": snap.snapshot_id, "created_at": snap.created_at.isoformat(), **data}
+    return data
+
+
+@app.get("/api/v1/models/{model_id}/snapshots", tags=["observe"])
+def list_snapshots(model_id: str):
+    rec = registry.get(model_id)
+    cur = rec.weight_version if rec else -1
+    return {"snapshots": [s.meta(cur) for s in snapshot_registry.list_for(model_id)]}
+
+
+@app.get("/api/v1/snapshots/{snapshot_id}", tags=["observe"])
+def get_snapshot(snapshot_id: str):
+    s = snapshot_registry.get(snapshot_id)
+    if s is None:
+        return JSONResponse(status_code=404, content={"detail": "snapshot not found"})
+    rec = registry.get(s.model_id)
+    cur = rec.weight_version if rec else s.data["weight_version"]
+    return {
+        "snapshot_id": s.snapshot_id,
+        "model_id": s.model_id,
+        "created_at": s.created_at.isoformat(),
+        "label": s.label,
+        "stale": s.data["weight_version"] != cur,
+        **s.data,
+    }
+
+
+@app.delete("/api/v1/snapshots/{snapshot_id}", tags=["observe"])
+def delete_snapshot(snapshot_id: str):
+    if not snapshot_registry.delete(snapshot_id):
+        return JSONResponse(status_code=404, content={"detail": "snapshot not found"})
+    return {"ok": True}
+
+
+@app.patch("/api/v1/models/{model_id}/nodes/{node_id}/weights", tags=["observe"])
+def patch_weights(model_id: str, node_id: str, body: dict):
+    """Live, in-place weight edit on the (trained) model — no rebuild."""
+    rec = registry.get(model_id)
+    if rec is None:
+        return JSONResponse(status_code=404, content={"detail": "model not found"})
+    core = rec.built.core.get(node_id)
+    if core is None:
+        return JSONResponse(status_code=404, content={"detail": "node not found"})
+    if not isinstance(core, nn.Linear):
+        return JSONResponse(status_code=400, content={"detail": "node has no weight matrix"})
+    if run_registry.active_for(model_id) is not None:
+        return JSONResponse(status_code=409, content={"detail": "weights are owned by an active training run"})
+    try:
+        with rec.train_lock, torch.no_grad():
+            if body.get("weights") is not None:
+                t = _to_tensor_2d(body["weights"], "weights")
+                if tuple(t.shape) != (core.out_features, core.in_features):
+                    raise ValueError(f"'weights' shape {tuple(t.shape)} != ({core.out_features}, {core.in_features})")
+                core.weight.copy_(t)
+            for cell in body.get("cells") or []:
+                core.weight[int(cell["i"]), int(cell["j"])] = float(cell["v"])
+            if body.get("bias") is not None:
+                if core.bias is None:
+                    raise ValueError("this layer has no bias")
+                b = _to_tensor_1d(body["bias"], "bias")
+                if tuple(b.shape) != (core.out_features,):
+                    raise ValueError(f"'bias' shape {tuple(b.shape)} != ({core.out_features},)")
+                core.bias.copy_(b)
+            for cell in body.get("bias_cells") or []:
+                if core.bias is None:
+                    raise ValueError("this layer has no bias")
+                core.bias[int(cell["i"])] = float(cell["v"])
+    except ValueError as e:
+        return JSONResponse(status_code=422, content={"detail": str(e)})
+    rec.weight_version += 1
+    return {"ok": True, "node_id": node_id, "weight_version": rec.weight_version,
+            "weight_shape": [core.out_features, core.in_features]}
