@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useGraph } from "@/lib/store";
 import { fetchNodeWeights } from "@/lib/api";
+import { patchNodeWeights } from "@/lib/observeApi";
 import { ACTIVATIONS, ACTIVATION_GLYPH } from "@/components/build/nodeCatalog";
 
 const MIN_CELL = 14;
@@ -67,11 +68,12 @@ function StatTile({ label, value, mono, accent }: { label: string; value: string
   );
 }
 
-export function LayerEditor({ nodeId }: { nodeId: string }) {
+export function LayerEditor({ nodeId, mode = "initial" }: { nodeId: string; mode?: "initial" | "live" }) {
   const router = useRouter();
   const node = useGraph((s) => s.nodes.find((n) => n.id === nodeId));
   const lastModelId = useGraph((s) => s.lastModelId);
   const updateNodeData = useGraph((s) => s.updateNodeData);
+  const [saveErr, setSaveErr] = useState<string | null>(null);
 
   const seedW = node?.data.initWeights ?? node?.data.weights ?? null;
   const [matrix, setMatrix] = useState<number[][] | null>(() => (seedW ? seedW.map((r) => [...r]) : null));
@@ -276,7 +278,19 @@ export function LayerEditor({ nodeId }: { nodeId: string }) {
     else setHover(null);
   };
 
-  const save = () => {
+  const save = async () => {
+    if (mode === "live") {
+      if (!lastModelId) return;
+      try {
+        const b = useBias ? bias ?? new Array(out).fill(0) : null;
+        await patchNodeWeights(lastModelId, nodeId, { weights: matrix, bias: b });
+        updateNodeData(nodeId, { weights: matrix, biasValues: b });
+        router.push("/");
+      } catch (e) {
+        setSaveErr(e instanceof Error ? e.message : String(e));
+      }
+      return;
+    }
     updateNodeData(nodeId, {
       initWeights: matrix,
       initBias: useBias ? bias ?? new Array(out).fill(0) : null,
@@ -314,6 +328,12 @@ export function LayerEditor({ nodeId }: { nodeId: string }) {
             </span>
           </div>
           <div className="ml-auto flex items-center gap-2">
+            {mode === "live" && (
+              <span className="rounded-md bg-violet-500/15 px-2 py-1 text-[11px] text-violet-200 ring-1 ring-inset ring-violet-500/30">
+                live edit · applies to the trained model
+              </span>
+            )}
+            {saveErr && <span className="max-w-[260px] truncate text-xs text-red-300">{saveErr}</span>}
             <button
               onClick={() => router.push("/")}
               className="h-9 rounded-lg border border-neutral-700/80 px-4 text-sm text-neutral-300 transition hover:bg-neutral-800/60"
@@ -324,7 +344,7 @@ export function LayerEditor({ nodeId }: { nodeId: string }) {
               onClick={save}
               className="h-9 rounded-lg bg-sky-500 px-4 text-sm font-semibold text-neutral-950 shadow-lg shadow-sky-950/50 transition hover:bg-sky-400 active:bg-sky-500"
             >
-              Apply changes
+              {mode === "live" ? "Apply (live)" : "Apply changes"}
             </button>
           </div>
         </div>

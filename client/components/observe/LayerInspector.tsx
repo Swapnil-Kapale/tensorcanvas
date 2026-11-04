@@ -1,8 +1,10 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useObserve } from "@/lib/observeStore";
 
 export function LayerInspector() {
+  const router = useRouter();
   const snapshot = useObserve((s) => s.snapshot);
   const selected = useObserve((s) => s.selectedNode);
   if (!snapshot || !selected) {
@@ -11,6 +13,7 @@ export function LayerInspector() {
   const rec = snapshot.nodes[selected];
   if (!rec) return <div className="p-4 text-xs text-neutral-500">No data for this node.</div>;
   const sm = rec.summary;
+  const isLinear = snapshot.node_types[selected] === "linear";
 
   return (
     <div className="flex min-h-0 flex-1 flex-col p-4">
@@ -18,6 +21,14 @@ export function LayerInspector() {
         <span className="text-[11px] font-semibold uppercase tracking-wider text-neutral-500">Activations</span>
         <span className="font-mono text-xs text-neutral-400">{selected} · [{rec.shape.join(", ")}]</span>
       </div>
+      {isLinear && (
+        <button
+          onClick={() => router.push(`/build/${selected}?mode=live`)}
+          className="mb-3 w-full rounded-lg border border-violet-500/50 px-3 py-1.5 text-xs text-violet-200 transition hover:bg-violet-500/10"
+        >
+          Edit weights (live) ↗ — then re-run to see the effect
+        </button>
+      )}
       <div className="grid grid-cols-3 gap-1.5 text-[10px]">
         {[["min", sm.min], ["max", sm.max], ["mean", sm.mean], ["std", sm.std], ["‖·‖", sm.l2], ["active", sm.frac_active]].map(([k, v]) => (
           <div key={k as string} className="rounded bg-neutral-800/50 px-2 py-1 ring-1 ring-inset ring-neutral-800">
