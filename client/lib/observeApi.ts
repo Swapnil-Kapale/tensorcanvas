@@ -5,6 +5,7 @@ import { API_BASE } from "@/lib/api";
 export type RunInput =
   | { kind: "vector"; values: number[] }
   | { kind: "dataset"; dataset_id: string; index: number }
+  | { kind: "image"; data: string }
   | { kind: "random"; seed: number };
 
 export interface NodeRec {

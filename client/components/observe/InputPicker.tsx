@@ -16,6 +16,14 @@ export function InputPicker({ modelId, inputShape }: { modelId: string; inputSha
   const [index, setIndex] = useState(0);
   const [err, setErr] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const imgRef = useRef<HTMLInputElement>(null);
+  const isImage = inputShape.length === 3;
+
+  const onImage = (file: File) => {
+    const reader = new FileReader();
+    reader.onload = () => run(modelId, { kind: "image", data: String(reader.result) });
+    reader.readAsDataURL(file);
+  };
 
   const field = "w-full rounded-md border border-neutral-700 bg-neutral-800/80 px-2 py-1 text-right font-mono text-xs text-neutral-100 outline-none focus:border-violet-500";
   const btn = "rounded-lg px-3 py-1.5 text-sm font-semibold transition disabled:opacity-40";
@@ -66,6 +74,19 @@ export function InputPicker({ modelId, inputShape }: { modelId: string; inputSha
         </>
       ) : (
         <>
+          {isImage && (
+            <>
+              <input ref={imgRef} type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && onImage(e.target.files[0])} />
+              <button
+                className={btn + " w-full bg-violet-500 text-neutral-950 hover:bg-violet-400"}
+                disabled={busy}
+                onClick={() => imgRef.current?.click()}
+              >
+                Upload an image to classify
+              </button>
+              <div className="text-center text-[10px] text-neutral-600">resized to {inputShape.join("×")} automatically · or sample a dataset below</div>
+            </>
+          )}
           <div
             onClick={() => fileRef.current?.click()}
             className="cursor-pointer rounded-xl border-2 border-dashed border-neutral-700 p-3 text-center text-xs text-neutral-400 hover:border-neutral-600"

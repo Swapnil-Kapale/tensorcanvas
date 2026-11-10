@@ -3,6 +3,8 @@ into a bounded snapshot (for visualization + analysis), and store snapshots."""
 
 from __future__ import annotations
 
+import base64
+import io
 import threading
 import uuid
 from collections import deque
@@ -10,8 +12,10 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Optional
 
+import numpy as np
 import torch
 import torch.nn.functional as F
+from PIL import Image
 
 from .datasets import DatasetError, datasets, match_to_network
 from .training import terminal_activation
@@ -101,6 +105,16 @@ def _resolve_input(built, spec: dict, input_shape: tuple[int, ...], out_dim: int
     elif kind == "random":
         g = torch.Generator().manual_seed(int(spec.get("seed", 0)))
         x = torch.randn(1, *input_shape, generator=g)
+    elif kind == "image":
+        if len(input_shape) != 3:
+            raise DatasetError("image input needs a 3-D [C, H, W] network input")
+        c, h, w = input_shape
+        raw = base64.b64decode(str(spec.get("data", "")).split(",")[-1])
+        im = Image.open(io.BytesIO(raw)).convert("L" if c == 1 else "RGB").resize((w, h))
+        a = np.asarray(im, dtype=np.float32) / 255.0
+        a = a[None, :, :] if c == 1 else a.transpose(2, 0, 1)
+        x = torch.from_numpy(a).unsqueeze(0)
+        thumb = _downsample(x[0, 0], THUMB_HW)
     elif kind == "dataset":
         ds = datasets.get(spec.get("dataset_id", ""))
         if ds is None:

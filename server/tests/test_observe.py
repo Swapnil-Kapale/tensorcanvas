@@ -70,6 +70,38 @@ def test_run_dataset_sample_carries_target():
     assert r.json()["output"]["prediction"]["target"] in (0, 1)
 
 
+def test_run_image_input():
+    # a small conv net with a [1,8,8] image input
+    spec = {
+        "nodes": [
+            {"id": "in", "type": "input", "params": {"shape": [1, 8, 8]}},
+            {"id": "c", "type": "conv2d", "params": {"out_channels": 4, "kernel_size": 3, "activation": "relu"}},
+            {"id": "fl", "type": "flatten"},
+            {"id": "fc", "type": "linear", "params": {"out_features": 3}},
+            {"id": "out", "type": "output", "params": {"activation": "softmax"}},
+        ],
+        "edges": [
+            {"source": "in", "target": "c"},
+            {"source": "c", "target": "fl"},
+            {"source": "fl", "target": "fc"},
+            {"source": "fc", "target": "out"},
+        ],
+    }
+    mid = client.post("/api/v1/models/build", json=spec).json()["model_id"]
+    import base64
+    import io
+    from PIL import Image
+
+    buf = io.BytesIO()
+    Image.new("L", (12, 12), color=128).save(buf, format="PNG")
+    data = "data:image/png;base64," + base64.b64encode(buf.getvalue()).decode()
+    r = client.post("/api/v1/models/" + mid + "/run", json={"input": {"kind": "image", "data": data}})
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["nodes"]["c"]["shape"] == [4, 6, 6]  # resized to 8x8 → conv k3 → 6x6
+    assert body["output"]["prediction"]["pred_class"] in (0, 1, 2)
+
+
 def test_snapshot_list_get_delete():
     mid = _model()
     sid = client.post("/api/v1/models/" + mid + "/run", json={"input": {"kind": "vector", "values": [0.1, 0.2]}, "label": "t"}).json()["snapshot_id"]
