@@ -137,6 +137,11 @@ def load_json(data: bytes, name: str) -> Dataset:
         obj = json.loads(data.decode("utf-8"))
     except json.JSONDecodeError as e:
         raise DatasetError(f"invalid JSON: {e}")
+    if isinstance(obj, dict) and obj.get("format") == "tensorcanvas-net":
+        raise DatasetError(
+            "This is a TensorCanvas network file (.tcnet.json), not a dataset. "
+            "Load it on the Build tab via Import or by dragging it onto the canvas."
+        )
     if isinstance(obj, dict) and ("X" in obj or "data" in obj):
         X = np.asarray(obj.get("X", obj.get("data")), dtype=np.float64)
         y = np.asarray(obj.get("y", obj.get("labels")))

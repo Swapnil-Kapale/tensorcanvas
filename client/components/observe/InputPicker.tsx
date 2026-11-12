@@ -92,7 +92,7 @@ export function InputPicker({ modelId, inputShape }: { modelId: string; inputSha
             className="cursor-pointer rounded-xl border-2 border-dashed border-neutral-700 p-3 text-center text-xs text-neutral-400 hover:border-neutral-600"
           >
             <input ref={fileRef} type="file" accept=".csv,.json,.npy,.npz,.zip" className="hidden" onChange={(e) => e.target.files?.[0] && onUpload(e.target.files[0])} />
-            {datasetId ? `dataset loaded · ${nSamples} samples` : "Upload a dataset to sample an input"}
+            {datasetId ? `dataset loaded · ${nSamples} samples` : isImage ? "or an image ZIP (class folders) to sample" : "Upload a dataset to sample an input"}
           </div>
           {datasetId && (
             <>
