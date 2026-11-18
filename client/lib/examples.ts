@@ -78,9 +78,32 @@ export function alexnetExample(classes = 1000): Graph {
   return { nodes: ns, edges: chain(ns) };
 }
 
+export function smallCnnExample(classes = 3): Graph {
+  let x = 0;
+  const step = () => (x += 160);
+  const ns = [
+    mk("input", "input", step(), 200, { params: { shape: "1, 28, 28" } }),
+    mk("conv1", "conv2d", step(), 120, { params: { out_channels: "8", kernel_size: "3", stride: "1", padding: "1" }, activation: "relu" }),
+    mk("pool1", "maxpool2d", step(), 280, { params: { kernel_size: "2", stride: "2" } }),
+    mk("conv2", "conv2d", step(), 120, { params: { out_channels: "16", kernel_size: "3", stride: "1", padding: "1" }, activation: "relu" }),
+    mk("pool2", "maxpool2d", step(), 280, { params: { kernel_size: "2", stride: "2" } }),
+    mk("flatten", "flatten", step(), 320, {}),
+    mk("fc1", "linear", step(), 160, { params: { out_features: "32" }, activation: "relu" }),
+    mk("fc2", "linear", step(), 160, { params: { out_features: String(classes) }, activation: "none" }),
+    mk("output", "output", step(), 200, { activation: "softmax" }),
+  ];
+  return { nodes: ns, edges: chain(ns) };
+}
+
 export const EXAMPLES: { group: string; items: { id: string; label: string; make: () => Graph }[] }[] = [
   { group: "ANN", items: [{ id: "mlp", label: "MLP (28×28 → 3)", make: () => annExample() }] },
-  { group: "CNN", items: [{ id: "alexnet", label: "AlexNet (ImageNet)", make: () => alexnetExample() }] },
+  {
+    group: "CNN",
+    items: [
+      { id: "small-cnn", label: "Small CNN (28×28 → 3) · trainable", make: () => smallCnnExample() },
+      { id: "alexnet", label: "AlexNet (ImageNet · architecture)", make: () => alexnetExample() },
+    ],
+  },
 ];
 
 // ── File import / export ─────────────────────────────────────────────────────
