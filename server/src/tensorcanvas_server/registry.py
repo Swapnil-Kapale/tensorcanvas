@@ -26,6 +26,8 @@ class ModelRecord:
     # Bumped on every in-place weight mutation (training step, live patch, checkpoint
     # restore) so snapshots taken earlier can be flagged stale.
     weight_version: int = 0
+    # Class names for the output units (set when pretrained weights are loaded).
+    labels: Optional[list[str]] = None
 
 
 class ModelRegistry:

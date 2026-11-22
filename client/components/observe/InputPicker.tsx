@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { useObserve } from "@/lib/observeStore";
 import { uploadDataset } from "@/lib/trainApi";
+import { loadPretrained } from "@/lib/observeApi";
 
 export function InputPicker({ modelId, inputShape }: { modelId: string; inputShape: number[] }) {
   const run = useObserve((s) => s.run);
@@ -15,9 +16,22 @@ export function InputPicker({ modelId, inputShape }: { modelId: string; inputSha
   const [nSamples, setNSamples] = useState(0);
   const [index, setIndex] = useState(0);
   const [err, setErr] = useState<string | null>(null);
+  const [pre, setPre] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const imgRef = useRef<HTMLInputElement>(null);
   const isImage = inputShape.length === 3;
+
+  const onPretrained = async () => {
+    setPre("Loading pretrained AlexNet… (first time downloads ~233 MB)");
+    setErr(null);
+    try {
+      const r = await loadPretrained(modelId, "alexnet");
+      setPre(`Pretrained AlexNet loaded · ${r.classes} ImageNet classes — upload an image to classify`);
+    } catch (e) {
+      setPre(null);
+      setErr(e instanceof Error ? e.message : String(e));
+    }
+  };
 
   const onImage = (file: File) => {
     const reader = new FileReader();
@@ -76,6 +90,14 @@ export function InputPicker({ modelId, inputShape }: { modelId: string; inputSha
         <>
           {isImage && (
             <>
+              <button
+                className={btn + " w-full border border-amber-500/50 text-amber-200 hover:bg-amber-500/10"}
+                disabled={busy}
+                onClick={onPretrained}
+              >
+                Load pretrained AlexNet weights
+              </button>
+              {pre && <div className="rounded-lg border border-neutral-700 bg-neutral-800/50 p-2 text-[11px] text-neutral-300">{pre}</div>}
               <input ref={imgRef} type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && onImage(e.target.files[0])} />
               <button
                 className={btn + " w-full bg-violet-500 text-neutral-950 hover:bg-violet-400"}

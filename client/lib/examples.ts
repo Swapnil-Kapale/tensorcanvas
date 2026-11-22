@@ -61,12 +61,12 @@ export function alexnetExample(classes = 1000): Graph {
   const pool = (id: string) => mk(id, "maxpool2d", step(), 260, { params: { kernel_size: "3", stride: "2" } });
   const ns = [
     mk("input", "input", step(), 200, { params: { shape: "3, 224, 224" } }),
-    conv("conv1", "96", "11", "4", "2"),
+    conv("conv1", "64", "11", "4", "2"),
     pool("pool1"),
-    conv("conv2", "256", "5", "1", "2"),
+    conv("conv2", "192", "5", "1", "2"),
     pool("pool2"),
     conv("conv3", "384", "3", "1", "1"),
-    conv("conv4", "384", "3", "1", "1"),
+    conv("conv4", "256", "3", "1", "1"),
     conv("conv5", "256", "3", "1", "1"),
     pool("pool3"),
     mk("flatten", "flatten", step(), 320, {}),

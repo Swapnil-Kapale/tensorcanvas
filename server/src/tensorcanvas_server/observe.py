@@ -78,7 +78,7 @@ def _shape_node(t: torch.Tensor) -> dict:
     return rec
 
 
-def _predict(out: torch.Tensor, built, target) -> dict:
+def _predict(out: torch.Tensor, built, target, labels=None) -> dict:
     term = terminal_activation(built)
     o = out.detach().reshape(-1)
     out_dim = int(o.numel())
@@ -87,9 +87,14 @@ def _predict(out: torch.Tensor, built, target) -> dict:
         return {"task": "classification", "pred_class": int(prob > 0.5),
                 "probs": [1 - prob, prob], "confidence": max(prob, 1 - prob), "target": target}
     probs = (o if term == "softmax" else torch.softmax(o, 0)).tolist()
-    pc = max(range(out_dim), key=lambda i: probs[i])
+    order = sorted(range(out_dim), key=lambda i: probs[i], reverse=True)
+    pc = order[0]
+    topk = [
+        {"index": i, "prob": probs[i], "label": labels[i] if labels and i < len(labels) else None}
+        for i in order[:5]
+    ]
     return {"task": "classification", "pred_class": int(pc), "probs": probs,
-            "confidence": float(probs[pc]), "target": target}
+            "confidence": float(probs[pc]), "target": target, "topk": topk}
 
 
 def _resolve_input(built, spec: dict, input_shape: tuple[int, ...], out_dim: int):
@@ -151,7 +156,7 @@ def run_model(rec, built, spec: dict) -> dict:
     if task == "regression":
         prediction = {"task": "regression", "scalar": out_t.reshape(-1).tolist(), "target": target}
     else:
-        prediction = _predict(out_t, built, target)
+        prediction = _predict(out_t, built, target, getattr(rec, "labels", None))
     return {
         "weight_version": rec.weight_version,
         "order": list(built.order),
