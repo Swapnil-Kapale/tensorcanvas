@@ -28,6 +28,9 @@ class ModelRecord:
     weight_version: int = 0
     # Class names for the output units (set when pretrained weights are loaded).
     labels: Optional[list[str]] = None
+    # Per-channel input normalization {"mean": [...], "std": [...]} for pretrained
+    # models (ImageNet). Applied to image inputs so inference matches training.
+    input_norm: Optional[dict] = None
 
 
 class ModelRegistry:

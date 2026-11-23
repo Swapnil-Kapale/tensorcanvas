@@ -16,14 +16,17 @@ SERVER_DIR="$ROOT/server"
 FRONTEND_PORT="${FRONTEND_PORT:-3000}"
 BACKEND_PORT="${BACKEND_PORT:-8000}"
 
-# The backend command. Today the server is just a placeholder (no web
-# framework installed yet — we add packages one by one as we need them).
-# Once we add FastAPI + uvicorn, switch this to the commented line below.
-BACKEND_CMD=(uv run tensorcanvas-server)
-# BACKEND_CMD=(uv run uvicorn tensorcanvas_server.main:app --reload --port "$BACKEND_PORT")
+# The browser calls the backend at this URL. Derive it from BACKEND_PORT so that
+# `BACKEND_PORT=9000 ./dev.sh` keeps the client pointed at the right backend.
+export NEXT_PUBLIC_API_URL="${NEXT_PUBLIC_API_URL:-http://localhost:$BACKEND_PORT}"
 
-# Set this once the backend exposes a health endpoint, to wait for readiness.
-BACKEND_HEALTH_URL="${BACKEND_HEALTH_URL:-}"   # e.g. http://localhost:8000/health
+# The backend command: launch the FastAPI app via its console script
+# (uv run tensorcanvas-server → uvicorn, see server/src/tensorcanvas_server/__init__.py).
+BACKEND_CMD=(uv run tensorcanvas-server)
+
+# Wait for the backend's /health endpoint before starting the client, so the UI
+# never loads against a backend that isn't ready. Override/disable via env.
+BACKEND_HEALTH_URL="${BACKEND_HEALTH_URL:-http://localhost:$BACKEND_PORT/health}"
 
 # ── Colors ───────────────────────────────────────────────────────────────────
 C_WEB="\033[36m"   # cyan

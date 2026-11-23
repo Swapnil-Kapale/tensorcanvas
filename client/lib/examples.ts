@@ -95,6 +95,32 @@ export function smallCnnExample(classes = 3): Graph {
   return { nodes: ns, edges: chain(ns) };
 }
 
+export function vgg16Example(classes = 1000): Graph {
+  // Pure feedforward conv stack (13 conv + 3 linear), so it maps 1:1 onto the
+  // graph format and matches torchvision VGG-16 for pretrained-weight loading.
+  // Input 224×224 → five /2 pools → 7×7, so a plain flatten replaces torchvision's
+  // adaptive-avg-pool (a no-op at 224) and the first Dense sees 512·7·7 = 25088.
+  let x = 0;
+  const step = () => (x += 110);
+  const conv = (id: string, ch: string) =>
+    mk(id, "conv2d", step(), 120, { params: { out_channels: ch, kernel_size: "3", stride: "1", padding: "1" }, activation: "relu" });
+  const pool = (id: string) => mk(id, "maxpool2d", step(), 260, { params: { kernel_size: "2", stride: "2" } });
+  const ns = [
+    mk("input", "input", step(), 200, { params: { shape: "3, 224, 224" } }),
+    conv("conv1_1", "64"), conv("conv1_2", "64"), pool("pool1"),
+    conv("conv2_1", "128"), conv("conv2_2", "128"), pool("pool2"),
+    conv("conv3_1", "256"), conv("conv3_2", "256"), conv("conv3_3", "256"), pool("pool3"),
+    conv("conv4_1", "512"), conv("conv4_2", "512"), conv("conv4_3", "512"), pool("pool4"),
+    conv("conv5_1", "512"), conv("conv5_2", "512"), conv("conv5_3", "512"), pool("pool5"),
+    mk("flatten", "flatten", step(), 320, {}),
+    mk("fc6", "linear", step(), 120, { params: { out_features: "4096" }, activation: "relu" }),
+    mk("fc7", "linear", step(), 120, { params: { out_features: "4096" }, activation: "relu" }),
+    mk("fc8", "linear", step(), 120, { params: { out_features: String(classes) }, activation: "none" }),
+    mk("output", "output", step(), 200, { activation: "softmax" }),
+  ];
+  return { nodes: ns, edges: chain(ns) };
+}
+
 export const EXAMPLES: { group: string; items: { id: string; label: string; make: () => Graph }[] }[] = [
   { group: "ANN", items: [{ id: "mlp", label: "MLP (28×28 → 3)", make: () => annExample() }] },
   {
@@ -102,6 +128,7 @@ export const EXAMPLES: { group: string; items: { id: string; label: string; make
     items: [
       { id: "small-cnn", label: "Small CNN (28×28 → 3) · trainable", make: () => smallCnnExample() },
       { id: "alexnet", label: "AlexNet (ImageNet · architecture)", make: () => alexnetExample() },
+      { id: "vgg16", label: "VGG-16 (ImageNet · architecture)", make: () => vgg16Example() },
     ],
   },
 ];
