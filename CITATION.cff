@@ -1,0 +1,26 @@
+cff-version: 1.2.0
+message: "If you use TensorCanvas in your research or teaching, please cite it."
+title: "TensorCanvas: A Visual Neural-Network Exploration & Intervention Studio"
+abstract: >-
+  TensorCanvas is an open-source studio for building neural networks visually,
+  running inference, inspecting activations layer by layer, and intervening on
+  weights to see how behaviour changes — in the browser, backed by PyTorch.
+type: software
+authors:
+  - family-names: Kapale
+    given-names: Swapnil
+    alias: Swapnil-Kapale
+  - family-names: Tandon
+    given-names: Aryan
+    alias: AryTan003
+license: Apache-2.0
+version: 0.1.0
+date-released: 2026-11-26
+keywords:
+  - neural networks
+  - deep learning
+  - visualization
+  - interpretability
+  - education
+  - pytorch
+  - machine learning

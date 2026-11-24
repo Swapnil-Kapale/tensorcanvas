@@ -1,0 +1,47 @@
+name: New module (layer / dataset / model / example)
+description: Propose or track adding a new pluggable module
+labels: ["enhancement", "good first issue"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        TensorCanvas is built to be extended. Each module type has a step-by-step
+        recipe in [`docs/`](../tree/main/docs). This template pre-fills the files
+        you'll touch.
+  - type: dropdown
+    id: module-type
+    attributes:
+      label: Module type
+      options:
+        - Layer type
+        - Dataset format
+        - Pretrained model
+        - Example network
+    validations:
+      required: true
+  - type: input
+    id: name
+    attributes:
+      label: Name
+      placeholder: e.g. BatchNorm2D / .tsv / VGG-16 / Tiny MLP
+    validations:
+      required: true
+  - type: textarea
+    id: plan
+    attributes:
+      label: Where it plugs in
+      description: Confirm the files you'll change (see the recipe for your type).
+      value: |
+        - Layer type → `server/.../builder.py` (LAYERS) AND `client/components/build/nodeCatalog.ts`
+        - Dataset format → `server/.../datasets.py` (loader + load_upload dispatch)
+        - Pretrained model → `server/.../pretrained.py` (PRETRAINED) + a matching example
+        - Example network → `client/lib/examples.ts` (EXAMPLES)
+    validations:
+      required: true
+  - type: textarea
+    id: tests
+    attributes:
+      label: Test plan
+      description: How will you verify it? (Keep pretrained tests offline — no weight downloads.)
+    validations:
+      required: false
