@@ -44,7 +44,7 @@ Please report security issues **privately** — do not open a public issue.
 
 - Preferred: open a GitHub [private security advisory](https://docs.github.com/en/code-security/security-advisories/guidance-on-reporting-and-writing-information-about-vulnerabilities/privately-reporting-a-security-vulnerability)
   on this repository.
-- Or email the maintainers: swapnilkapaledev@gmail.com, aryan.tandon03@gmail.com.
+- Or email the maintainers: swapnilkapaleofficial@gmail.com, aryan.tandon03@gmail.com.
 
 We will acknowledge your report and keep you updated on a fix. Thank you for
 helping keep users safe.
