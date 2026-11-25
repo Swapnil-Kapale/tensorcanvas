@@ -109,3 +109,8 @@ export async function loadPretrained(modelId: string, arch = "alexnet"): Promise
     }),
   );
 }
+
+export async function listPretrained(): Promise<string[]> {
+  const b = await jsonOrThrow(await fetch(`${API_BASE}/api/v1/pretrained`));
+  return (b.archs ?? []) as string[];
+}

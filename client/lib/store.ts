@@ -132,7 +132,16 @@ export const useGraph = create<GraphState>((set, get) => ({
     }),
 
   updateNodeData: (id, patch) =>
-    set((s) => ({ nodes: s.nodes.map((n) => (n.id === id ? { ...n, data: { ...n.data, ...patch } } : n)) })),
+    set((s) => {
+      // Editing a node's structure makes the last compile's artifacts stale.
+      // Clear them so the canvas doesn't show weights/shapes that no longer match
+      // (and would otherwise plant a guaranteed failure on the next compile).
+      const STRUCTURAL = ["type", "params", "activation", "bias", "customType", "extra", "neuronActivations"];
+      const invalidate = Object.keys(patch).some((k) => STRUCTURAL.includes(k))
+        ? { outputShape: null, weights: null, weightShape: null, hasBias: null, biasValues: null, error: null }
+        : {};
+      return { nodes: s.nodes.map((n) => (n.id === id ? { ...n, data: { ...n.data, ...invalidate, ...patch } } : n)) };
+    }),
 
   deleteNode: (id) =>
     set((s) => ({

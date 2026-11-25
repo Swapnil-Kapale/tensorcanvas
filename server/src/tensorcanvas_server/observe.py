@@ -97,7 +97,7 @@ def _predict(out: torch.Tensor, built, target, labels=None) -> dict:
             "confidence": float(probs[pc]), "target": target, "topk": topk}
 
 
-def _resolve_input(built, spec: dict, input_shape: tuple[int, ...], out_dim: int):
+def _resolve_input(built, spec: dict, input_shape: tuple[int, ...], out_dim: int, norm: dict | None = None):
     kind = spec.get("kind")
     target = None
     task = None
@@ -133,6 +133,14 @@ def _resolve_input(built, spec: dict, input_shape: tuple[int, ...], out_dim: int
             thumb = _downsample(x[0, 0], THUMB_HW)
     else:
         raise DatasetError(f"unknown input kind '{kind}'")
+    # Pretrained (ImageNet) models expect normalized input. The thumbnail above is
+    # built from the raw [0,1] image, so the displayed preview stays natural.
+    if norm is not None and len(input_shape) == 3 and x.dim() == 4:
+        c = x.shape[1]
+        if len(norm.get("mean", [])) == c and len(norm.get("std", [])) == c:
+            mean = torch.tensor(norm["mean"], dtype=torch.float32).view(1, c, 1, 1)
+            std = torch.tensor(norm["std"], dtype=torch.float32).view(1, c, 1, 1)
+            x = (x - mean) / std
     numel = _prod(input_shape)
     record = {
         "source": {"kind": kind, **{k: spec[k] for k in ("dataset_id", "index", "seed") if k in spec}, "target": target},
@@ -146,7 +154,7 @@ def _resolve_input(built, spec: dict, input_shape: tuple[int, ...], out_dim: int
 def run_model(rec, built, spec: dict) -> dict:
     out_id = built.module.output_id
     out_dim = _prod(built.output_shapes[out_id])
-    x, input_rec, target, task = _resolve_input(built, spec, tuple(built.input_shape), out_dim)
+    x, input_rec, target, task = _resolve_input(built, spec, tuple(built.input_shape), out_dim, getattr(rec, "input_norm", None))
     module = built.module
     module.eval()
     with rec.train_lock, torch.no_grad():

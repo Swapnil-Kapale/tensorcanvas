@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useObserve } from "@/lib/observeStore";
 
@@ -7,6 +8,7 @@ export function LayerInspector() {
   const router = useRouter();
   const snapshot = useObserve((s) => s.snapshot);
   const selected = useObserve((s) => s.selectedNode);
+  const [showAll, setShowAll] = useState(false);
   if (!snapshot || !selected) {
     return <div className="p-4 text-xs text-neutral-500">Select or step to a node to inspect its activations.</div>;
   }
@@ -38,28 +40,44 @@ export function LayerInspector() {
         ))}
       </div>
 
-      {rec.values ? (
-        <div className="mt-3 min-h-0 flex-1 space-y-1 overflow-auto">
-          {rec.values.map((v, i) => {
-            const w = Math.min(100, (Math.abs(v) / (sm.absmax || 1)) * 100);
-            return (
-              <div key={i} className="flex items-center gap-2">
-                <span className="w-8 shrink-0 font-mono text-[10px] text-neutral-600">n{i}</span>
-                <div className="relative h-3 flex-1">
-                  <div className="absolute left-1/2 top-0 h-full w-px bg-neutral-700" />
-                  <div
-                    className={`absolute top-0 h-full ${v >= 0 ? "left-1/2 bg-sky-500/70" : "right-1/2 bg-amber-500/70"}`}
-                    style={{ width: `${w / 2}%` }}
-                  />
-                </div>
-                <span className="w-16 shrink-0 text-right font-mono text-[10px] text-neutral-400">{v.toFixed(3)}</span>
+      {rec.values ? (() => {
+        const CAP = 64;
+        const indexed = rec.values.map((v, i) => ({ v, i }));
+        const capped = indexed.length > CAP && !showAll;
+        const shown = capped
+          ? [...indexed].sort((a, b) => Math.abs(b.v) - Math.abs(a.v)).slice(0, CAP)
+          : indexed;
+        return (
+          <div className="mt-3 min-h-0 flex-1 space-y-1 overflow-auto">
+            {indexed.length > CAP && (
+              <div className="mb-1 flex items-center justify-between text-[10px] text-neutral-500">
+                <span>{capped ? `top ${CAP} of ${indexed.length} by magnitude` : `all ${indexed.length}`}</span>
+                <button onClick={() => setShowAll(!showAll)} className="text-violet-300 hover:underline">
+                  {capped ? "show all" : `show top ${CAP}`}
+                </button>
               </div>
-            );
-          })}
-        </div>
-      ) : rec.channels ? (
+            )}
+            {shown.map(({ v, i }) => {
+              const w = Math.min(100, (Math.abs(v) / (sm.absmax || 1)) * 100);
+              return (
+                <div key={i} className="flex items-center gap-2">
+                  <span className="w-8 shrink-0 font-mono text-[10px] text-neutral-600">n{i}</span>
+                  <div className="relative h-3 flex-1">
+                    <div className="absolute left-1/2 top-0 h-full w-px bg-neutral-700" />
+                    <div
+                      className={`absolute top-0 h-full ${v >= 0 ? "left-1/2 bg-sky-500/70" : "right-1/2 bg-amber-500/70"}`}
+                      style={{ width: `${w / 2}%` }}
+                    />
+                  </div>
+                  <span className="w-16 shrink-0 text-right font-mono text-[10px] text-neutral-400">{v.toFixed(3)}</span>
+                </div>
+              );
+            })}
+          </div>
+        );
+      })() : rec.channels ? (
         <div className="mt-3 text-xs text-neutral-400">
-          {rec.channels.length} channels · showing feature-map thumbnails is a later addition.
+          {rec.channels.length} channels · feature-map thumbnails:
           <div className="mt-2 flex flex-wrap gap-1">
             {(rec.thumbs?.images ?? []).map((img, i) => (
               <ChannelThumb key={i} data={img} hw={rec.thumbs!.hw} />

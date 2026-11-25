@@ -13,6 +13,7 @@ list of specific problems.
 from __future__ import annotations
 
 import asyncio
+import os
 import threading
 
 import torch
@@ -21,7 +22,15 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
 from torch import nn
 
-from .builder import BuildFailed, build_network, count_parameters, _to_tensor_1d, _to_tensor_2d
+from .builder import (
+    ACTIVATIONS,
+    LAYERS,
+    BuildFailed,
+    build_network,
+    count_parameters,
+    _to_tensor_1d,
+    _to_tensor_2d,
+)
 from .datasets import (
     BUILTINS,
     DatasetError,
@@ -62,9 +71,12 @@ app = FastAPI(
 )
 
 # The Next.js dev frontend runs on :3000 and calls this API from the browser.
+# Origins are overridable for other hosts/ports via CORS_ORIGINS (comma-separated).
+_DEFAULT_ORIGINS = "http://localhost:3000,http://127.0.0.1:3000"
+_cors_origins = [o.strip() for o in os.environ.get("CORS_ORIGINS", _DEFAULT_ORIGINS).split(",") if o.strip()]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+    allow_origins=_cors_origins,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -73,6 +85,30 @@ app.add_middleware(
 @app.get("/health", tags=["meta"])
 def health() -> dict:
     return {"status": "ok", "models_built": registry.count()}
+
+
+@app.get("/api/v1/catalog", tags=["meta"], summary="The node types the backend can build")
+def catalog() -> dict:
+    """Source of truth for what the builder understands.
+
+    The frontend palette (``client/components/build/nodeCatalog.ts``) must stay a
+    subset of ``layer_types`` here — a drift test enforces it. Exposing this lets
+    tools (and contributors) discover supported layers/activations without reading
+    the Python source.
+    """
+    return {
+        "layer_types": sorted(LAYERS),
+        "activations": sorted(set(ACTIVATIONS)),
+    }
+
+
+@app.get("/api/v1/pretrained", tags=["meta"], summary="Pretrained architectures that can be loaded")
+def pretrained_archs() -> dict:
+    """Names of the pretrained models the backend can load weights for. The
+    Observe UI uses this to offer a load button per architecture."""
+    from .pretrained import available_pretrained
+
+    return {"archs": available_pretrained()}
 
 
 @app.post(
@@ -404,13 +440,16 @@ def load_pretrained(model_id: str, body: dict):
         return JSONResponse(status_code=404, content={"detail": "model not found"})
     if run_registry.active_for(model_id) is not None:
         return JSONResponse(status_code=409, content={"detail": "stop the active training run first"})
-    arch = (body.get("arch") or "alexnet").lower()
-    if arch != "alexnet":
-        return JSONResponse(status_code=400, content={"detail": f"no pretrained weights for '{arch}' (only 'alexnet')"})
-    try:
-        from .pretrained import load_alexnet_into
+    from .pretrained import available_pretrained, load_pretrained_into
 
-        cats = load_alexnet_into(rec.built, rec)
+    arch = (body.get("arch") or "alexnet").lower()
+    if arch not in available_pretrained():
+        return JSONResponse(
+            status_code=400,
+            content={"detail": f"no pretrained weights for '{arch}' (available: {', '.join(available_pretrained())})"},
+        )
+    try:
+        cats = load_pretrained_into(arch, rec.built, rec)
     except ValueError as e:
         return JSONResponse(status_code=422, content={"detail": str(e)})
     except Exception as e:  # download/import failures

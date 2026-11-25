@@ -1,9 +1,9 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useObserve } from "@/lib/observeStore";
 import { uploadDataset } from "@/lib/trainApi";
-import { loadPretrained } from "@/lib/observeApi";
+import { listPretrained, loadPretrained } from "@/lib/observeApi";
 
 export function InputPicker({ modelId, inputShape }: { modelId: string; inputShape: number[] }) {
   const run = useObserve((s) => s.run);
@@ -17,16 +17,27 @@ export function InputPicker({ modelId, inputShape }: { modelId: string; inputSha
   const [index, setIndex] = useState(0);
   const [err, setErr] = useState<string | null>(null);
   const [pre, setPre] = useState<string | null>(null);
+  const [archs, setArchs] = useState<string[]>([]);
   const fileRef = useRef<HTMLInputElement>(null);
   const imgRef = useRef<HTMLInputElement>(null);
   const isImage = inputShape.length === 3;
 
-  const onPretrained = async () => {
-    setPre("Loading pretrained AlexNet… (first time downloads ~233 MB)");
+  useEffect(() => {
+    if (!isImage) return;
+    let alive = true;
+    listPretrained()
+      .then((a) => { if (alive && a.length) setArchs(a); })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, [isImage]);
+
+  const onPretrained = async (arch: string) => {
+    const name = arch.toUpperCase();
+    setPre(`Loading pretrained ${name}… (first run downloads the weights — can take a while)`);
     setErr(null);
     try {
-      const r = await loadPretrained(modelId, "alexnet");
-      setPre(`Pretrained AlexNet loaded · ${r.classes} ImageNet classes — upload an image to classify`);
+      const r = await loadPretrained(modelId, arch);
+      setPre(`Pretrained ${name} loaded · ${r.classes} ImageNet classes — upload an image to classify`);
     } catch (e) {
       setPre(null);
       setErr(e instanceof Error ? e.message : String(e));
@@ -90,13 +101,19 @@ export function InputPicker({ modelId, inputShape }: { modelId: string; inputSha
         <>
           {isImage && (
             <>
-              <button
-                className={btn + " w-full border border-amber-500/50 text-amber-200 hover:bg-amber-500/10"}
-                disabled={busy}
-                onClick={onPretrained}
-              >
-                Load pretrained AlexNet weights
-              </button>
+              {(archs.length ? archs : ["alexnet"]).map((arch) => (
+                <button
+                  key={arch}
+                  className={btn + " w-full border border-amber-500/50 text-amber-200 hover:bg-amber-500/10"}
+                  disabled={busy}
+                  onClick={() => onPretrained(arch)}
+                >
+                  Load pretrained {arch.toUpperCase()} weights
+                </button>
+              ))}
+              {archs.length > 1 && (
+                <div className="text-center text-[10px] text-neutral-600">pick the one matching your drawn network (load its example first)</div>
+              )}
               {pre && <div className="rounded-lg border border-neutral-700 bg-neutral-800/50 p-2 text-[11px] text-neutral-300">{pre}</div>}
               <input ref={imgRef} type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && onImage(e.target.files[0])} />
               <button
