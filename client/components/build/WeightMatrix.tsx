@@ -35,7 +35,7 @@ export function WeightMatrix({ data, onSetInit }: WeightMatrixProps) {
   }, [weights]);
 
   if (!shape) {
-    return <p className="text-[11px] text-neutral-500">Compile to view weights.</p>;
+    return <p className="text-[11px] text-[var(--faint)]">Compile to view weights.</p>;
   }
 
   if (editable && seedW) {
@@ -56,7 +56,7 @@ export function WeightMatrix({ data, onSetInit }: WeightMatrixProps) {
     return (
       <div>
         <div className="mb-1 flex items-center justify-between">
-          <span className="font-mono text-[11px] text-neutral-500">
+          <span className="font-mono text-[11px] text-[var(--faint)]">
             W [{out}×{inp}]{data.hasBias ? " + b" : ""}
           </span>
           {(data.initWeights || data.initBias) && (
@@ -71,13 +71,13 @@ export function WeightMatrix({ data, onSetInit }: WeightMatrixProps) {
         <div className="space-y-1">
           {seedW.map((row, r) => (
             <div key={r} className="flex items-center gap-1">
-              <span className="w-6 shrink-0 font-mono text-[10px] text-neutral-600">n{r}</span>
+              <span className="w-6 shrink-0 font-mono text-[10px] text-[var(--faint)]">n{r}</span>
               {row.map((v, c) => (
                 <input
                   key={c}
                   value={fmt(v)}
                   onChange={(e) => setCell(r, c, e.target.value)}
-                  className="w-12 rounded border border-neutral-700 bg-neutral-800 px-1 py-0.5 text-right font-mono text-[10px] text-neutral-100 outline-none focus:border-sky-500"
+                  className="w-12 rounded border border-[var(--stroke)] bg-black/30 px-1 py-0.5 text-right font-mono text-[10px] text-[var(--text)] outline-none focus:border-[var(--accent)]"
                 />
               ))}
               {data.hasBias && (
@@ -85,13 +85,13 @@ export function WeightMatrix({ data, onSetInit }: WeightMatrixProps) {
                   value={fmt((seedB ?? [])[r] ?? 0)}
                   onChange={(e) => setBias(r, e.target.value)}
                   title="bias"
-                  className="w-12 rounded border border-amber-700/60 bg-neutral-800 px-1 py-0.5 text-right font-mono text-[10px] text-amber-200 outline-none focus:border-amber-500"
+                  className="w-12 rounded border border-amber-700/60 bg-black/30 px-1 py-0.5 text-right font-mono text-[10px] text-amber-200 outline-none focus:border-amber-500"
                 />
               )}
             </div>
           ))}
         </div>
-        <p className="mt-1 text-[10px] text-neutral-600">
+        <p className="mt-1 text-[10px] text-[var(--faint)]">
           Edited values are sent as initial weights on the next compile.
         </p>
       </div>
@@ -104,7 +104,7 @@ export function WeightMatrix({ data, onSetInit }: WeightMatrixProps) {
     const cols = Math.min(inp, HEAT_COLS);
     return (
       <div>
-        <div className="mb-1 font-mono text-[11px] text-neutral-500">
+        <div className="mb-1 font-mono text-[11px] text-[var(--faint)]">
           W [{out}×{inp}] — read-only
         </div>
         <div className="space-y-0.5">
@@ -121,17 +121,17 @@ export function WeightMatrix({ data, onSetInit }: WeightMatrixProps) {
                   />
                 );
               })}
-              {inp > cols && <span className="pl-1 text-[9px] text-neutral-600">+{inp - cols}</span>}
+              {inp > cols && <span className="pl-1 text-[9px] text-[var(--faint)]">+{inp - cols}</span>}
             </div>
           ))}
         </div>
-        {out > rows && <div className="mt-0.5 text-[9px] text-neutral-600">+{out - rows} more rows</div>}
+        {out > rows && <div className="mt-0.5 text-[9px] text-[var(--faint)]">+{out - rows} more rows</div>}
       </div>
     );
   }
 
   return (
-    <p className="font-mono text-[11px] text-neutral-500">
+    <p className="font-mono text-[11px] text-[var(--faint)]">
       W [{out}×{inp}] — too large to show inline.
     </p>
   );

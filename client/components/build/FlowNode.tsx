@@ -117,7 +117,7 @@ export function FlowNode({ data, selected }: NodeProps<TCNode>) {
             type="target"
             position={Position.Left}
             style={{ top: COL_TOP + i * STRIDE + STRIDE / 2 }}
-            className="!h-2.5 !w-2.5 !bg-neutral-400"
+            className="!h-2.5 !w-2.5 !bg-[var(--accent-2)]"
           />
         ))}
         {Array.from({ length: n }).map((_, i) => (
@@ -127,7 +127,7 @@ export function FlowNode({ data, selected }: NodeProps<TCNode>) {
             type="source"
             position={Position.Right}
             style={{ top: COL_TOP + i * STRIDE + STRIDE / 2 }}
-            className="!h-2.5 !w-2.5 !bg-neutral-400"
+            className="!h-2.5 !w-2.5 !bg-[var(--accent-2)]"
           />
         ))}
       </div>
@@ -144,17 +144,17 @@ export function FlowNode({ data, selected }: NodeProps<TCNode>) {
   const tone = observing ? "violet" : "sky";
   const mags = data.activationMag ?? neuronMagnitudes(data.weights);
   const shellCls = [
-    "relative rounded-lg border-2 bg-neutral-900/95 px-3 py-2 text-neutral-100 shadow-lg",
-    "min-w-[140px] transition-colors",
-    hasError ? "border-red-500" : computing ? "border-violet-400" : "border-neutral-600",
+    "relative min-w-[140px] rounded-2xl border px-3 py-2 text-[var(--text)] backdrop-blur-xl transition-colors",
+    "shadow-[var(--shadow)]",
+    hasError ? "border-red-500" : computing ? "border-[var(--violet)]" : "border-[var(--stroke)]",
     computing ? "animate-pulse" : "",
-    selected ? "ring-2 ring-white/60" : "",
+    selected ? "tc-glow-sel" : "",
   ].join(" ");
 
   return (
-    <div className={shellCls}>
+    <div className={shellCls} style={{ background: "linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02)), rgba(16,16,20,0.72)" }}>
       {showTarget && (
-        <Handle id="tc" type="target" position={Position.Left} className="!h-2.5 !w-2.5 !bg-neutral-400" />
+        <Handle id="tc" type="target" position={Position.Left} className="!h-2.5 !w-2.5 !bg-[var(--accent-2)]" />
       )}
       <Label data={data} />
       {collapsedDense ? (
@@ -166,15 +166,15 @@ export function FlowNode({ data, selected }: NodeProps<TCNode>) {
           </div>
           <div className="text-center leading-tight">
             <div className="text-lg font-bold">{neuronCount(data) ?? "—"}</div>
-            <div className="text-[10px] text-neutral-400">neurons</div>
+            <div className="text-[10px] text-[var(--muted)]">neurons</div>
           </div>
         </div>
       ) : (
-        s && <div className="mt-1 font-mono text-[11px] text-neutral-400">{s}</div>
+        s && <div className="mt-1 font-mono text-[11px] text-[var(--muted)]">{s}</div>
       )}
       <Badges data={data} />
       {showSource && (
-        <Handle id="sc" type="source" position={Position.Right} className="!h-2.5 !w-2.5 !bg-neutral-400" />
+        <Handle id="sc" type="source" position={Position.Right} className="!h-2.5 !w-2.5 !bg-[var(--accent-2)]" />
       )}
     </div>
   );

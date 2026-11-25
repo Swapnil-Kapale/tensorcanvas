@@ -10,18 +10,18 @@ export function LayerInspector() {
   const selected = useObserve((s) => s.selectedNode);
   const [showAll, setShowAll] = useState(false);
   if (!snapshot || !selected) {
-    return <div className="p-4 text-xs text-neutral-500">Select or step to a node to inspect its activations.</div>;
+    return <div className="p-4 text-xs text-[var(--faint)]">Select or step to a node to inspect its activations.</div>;
   }
   const rec = snapshot.nodes[selected];
-  if (!rec) return <div className="p-4 text-xs text-neutral-500">No data for this node.</div>;
+  if (!rec) return <div className="p-4 text-xs text-[var(--faint)]">No data for this node.</div>;
   const sm = rec.summary;
   const isLinear = snapshot.node_types[selected] === "linear";
 
   return (
     <div className="flex min-h-0 flex-1 flex-col p-4">
       <div className="mb-2 flex items-center justify-between">
-        <span className="text-[11px] font-semibold uppercase tracking-wider text-neutral-500">Activations</span>
-        <span className="font-mono text-xs text-neutral-400">{selected} · [{rec.shape.join(", ")}]</span>
+        <span className="text-[11px] font-semibold uppercase tracking-wider text-[var(--faint)]">Activations</span>
+        <span className="font-mono text-xs text-[var(--muted)]">{selected} · [{rec.shape.join(", ")}]</span>
       </div>
       {isLinear && (
         <button
@@ -33,9 +33,9 @@ export function LayerInspector() {
       )}
       <div className="grid grid-cols-3 gap-1.5 text-[10px]">
         {[["min", sm.min], ["max", sm.max], ["mean", sm.mean], ["std", sm.std], ["‖·‖", sm.l2], ["active", sm.frac_active]].map(([k, v]) => (
-          <div key={k as string} className="rounded bg-neutral-800/50 px-2 py-1 ring-1 ring-inset ring-neutral-800">
-            <div className="uppercase tracking-wide text-neutral-500">{k}</div>
-            <div className="font-mono text-neutral-200">{(v as number).toFixed(3)}</div>
+          <div key={k as string} className="rounded bg-black/25 px-2 py-1 ring-1 ring-inset ring-[var(--stroke)]">
+            <div className="uppercase tracking-wide text-[var(--faint)]">{k}</div>
+            <div className="font-mono text-[var(--text)]">{(v as number).toFixed(3)}</div>
           </div>
         ))}
       </div>
@@ -50,7 +50,7 @@ export function LayerInspector() {
         return (
           <div className="mt-3 min-h-0 flex-1 space-y-1 overflow-auto">
             {indexed.length > CAP && (
-              <div className="mb-1 flex items-center justify-between text-[10px] text-neutral-500">
+              <div className="mb-1 flex items-center justify-between text-[10px] text-[var(--faint)]">
                 <span>{capped ? `top ${CAP} of ${indexed.length} by magnitude` : `all ${indexed.length}`}</span>
                 <button onClick={() => setShowAll(!showAll)} className="text-violet-300 hover:underline">
                   {capped ? "show all" : `show top ${CAP}`}
@@ -61,22 +61,22 @@ export function LayerInspector() {
               const w = Math.min(100, (Math.abs(v) / (sm.absmax || 1)) * 100);
               return (
                 <div key={i} className="flex items-center gap-2">
-                  <span className="w-8 shrink-0 font-mono text-[10px] text-neutral-600">n{i}</span>
+                  <span className="w-8 shrink-0 font-mono text-[10px] text-[var(--faint)]">n{i}</span>
                   <div className="relative h-3 flex-1">
-                    <div className="absolute left-1/2 top-0 h-full w-px bg-neutral-700" />
+                    <div className="absolute left-1/2 top-0 h-full w-px bg-[var(--stroke)]" />
                     <div
                       className={`absolute top-0 h-full ${v >= 0 ? "left-1/2 bg-sky-500/70" : "right-1/2 bg-amber-500/70"}`}
                       style={{ width: `${w / 2}%` }}
                     />
                   </div>
-                  <span className="w-16 shrink-0 text-right font-mono text-[10px] text-neutral-400">{v.toFixed(3)}</span>
+                  <span className="w-16 shrink-0 text-right font-mono text-[10px] text-[var(--muted)]">{v.toFixed(3)}</span>
                 </div>
               );
             })}
           </div>
         );
       })() : rec.channels ? (
-        <div className="mt-3 text-xs text-neutral-400">
+        <div className="mt-3 text-xs text-[var(--muted)]">
           {rec.channels.length} channels · feature-map thumbnails:
           <div className="mt-2 flex flex-wrap gap-1">
             {(rec.thumbs?.images ?? []).map((img, i) => (
@@ -85,7 +85,7 @@ export function LayerInspector() {
           </div>
         </div>
       ) : (
-        <div className="mt-3 text-xs text-neutral-500">{rec.truncated ? "Too large to list inline." : "No per-unit values."}</div>
+        <div className="mt-3 text-xs text-[var(--faint)]">{rec.truncated ? "Too large to list inline." : "No per-unit values."}</div>
       )}
     </div>
   );
@@ -104,5 +104,5 @@ function ChannelThumb({ data, hw }: { data: number[]; hw: number }) {
     }
     ctx.putImageData(img, 0, 0);
   };
-  return <canvas ref={ref} width={hw} height={hw} className="h-8 w-8 rounded border border-neutral-700" />;
+  return <canvas ref={ref} width={hw} height={hw} className="h-8 w-8 rounded border border-[var(--stroke)]" />;
 }

@@ -5,6 +5,7 @@ import { BuildCanvas } from "./build/BuildCanvas";
 import { TrainWorkspace } from "./train/TrainWorkspace";
 import { ObserveWorkspace } from "./observe/ObserveWorkspace";
 import { useGraph } from "@/lib/store";
+import { useTheme, PALETTES } from "@/lib/theme";
 
 const WORKSPACES = ["Build", "Train", "Observe", "Explore", "Intervene", "Properties"] as const;
 type Workspace = (typeof WORKSPACES)[number];
@@ -12,15 +13,47 @@ type Workspace = (typeof WORKSPACES)[number];
 function Properties() {
   const threshold = useGraph((s) => s.renderThreshold);
   const setThreshold = useGraph((s) => s.setThreshold);
+  const palette = useTheme((s) => s.palette);
+  const setPalette = useTheme((s) => s.setPalette);
+
   return (
     <div className="mx-auto max-w-lg p-8">
-      <h2 className="text-base font-semibold text-neutral-100">Canvas properties</h2>
-      <div className="mt-6 rounded-lg border border-neutral-800 p-4">
+      <h2 className="text-base font-semibold text-[var(--text)]">Appearance</h2>
+      <div className="tc-panel mt-5 p-5">
+        <span className="text-sm font-medium text-[var(--text)]">Accent palette</span>
+        <p className="mt-1 text-xs text-[var(--muted)]">
+          Recolors buttons, tabs and highlights. The data colors (weights, activations,
+          accuracy) stay fixed so the visualizations keep their meaning.
+        </p>
+        <div className="mt-4 grid grid-cols-3 gap-2.5">
+          {PALETTES.map((p) => {
+            const active = p.id === palette;
+            return (
+              <button
+                key={p.id}
+                onClick={() => setPalette(p.id)}
+                className={`flex items-center gap-2.5 rounded-xl border px-3 py-2.5 text-left text-xs transition ${
+                  active
+                    ? "border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--text)]"
+                    : "border-[var(--stroke)] text-[var(--muted)] hover:bg-[var(--glass-hover)]"
+                }`}
+              >
+                <span
+                  className="h-5 w-5 shrink-0 rounded-md"
+                  style={{ background: `linear-gradient(160deg, ${p.hi}, ${p.lo})`, boxShadow: active ? "0 0 10px var(--accent-glow)" : undefined }}
+                />
+                <span className="truncate">{p.label}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <h2 className="mt-8 text-base font-semibold text-[var(--text)]">Canvas properties</h2>
+      <div className="tc-panel mt-5 p-5">
         <label className="block">
-          <span className="text-sm font-medium text-neutral-200">
-            Neurons rendered individually
-          </span>
-          <p className="mt-1 text-xs text-neutral-500">
+          <span className="text-sm font-medium text-[var(--text)]">Neurons rendered individually</span>
+          <p className="mt-1 text-xs text-[var(--muted)]">
             Dense layers with this many neurons or fewer are drawn as individual neurons with
             per-connection edges. Larger layers collapse into a compact box.
           </p>
@@ -30,7 +63,7 @@ function Properties() {
             max={64}
             value={threshold}
             onChange={(e) => setThreshold(Math.max(1, Number(e.target.value) || 1))}
-            className="mt-3 w-28 rounded border border-neutral-700 bg-neutral-800 px-2 py-1.5 text-sm text-neutral-100 outline-none focus:border-sky-500"
+            className="tc-field mt-3 w-28 px-2 py-1.5 text-sm"
           />
         </label>
       </div>
@@ -44,12 +77,12 @@ export function WorkspaceShell() {
     w === "Build" || w === "Train" || w === "Observe" || w === "Properties";
 
   return (
-    <div className="flex h-full min-h-0 flex-col bg-neutral-950 text-neutral-100">
-      <header className="flex items-center gap-4 border-b border-neutral-800 px-4">
-        <span className="py-3 text-sm font-semibold tracking-tight">
-          Tensor<span className="text-sky-400">Canvas</span>
+    <div className="flex h-full min-h-0 flex-col text-[var(--text)]">
+      <header className="flex items-center gap-4 border-b border-[var(--stroke)] bg-[var(--glass)] px-4 py-2 backdrop-blur-xl">
+        <span className="py-1 text-sm font-semibold tracking-tight">
+          Tensor<span className="text-[var(--accent)]">Canvas</span>
         </span>
-        <nav className="flex gap-1">
+        <nav className="tc-nav tc-glass mx-auto">
           {WORKSPACES.map((w) => {
             const isActive = w === active;
             const on = enabled(w);
@@ -58,21 +91,15 @@ export function WorkspaceShell() {
                 key={w}
                 disabled={!on}
                 onClick={() => on && setActive(w)}
-                className={[
-                  "relative px-3 py-3 text-sm transition-colors",
-                  isActive ? "text-white" : "text-neutral-400",
-                  on ? "hover:text-white" : "cursor-not-allowed opacity-40",
-                ].join(" ")}
+                className={`tc-nav-item ${isActive ? "active" : ""} ${on ? "" : "cursor-not-allowed opacity-40"}`}
                 title={on ? undefined : "Coming soon"}
               >
                 {w}
-                {isActive && (
-                  <span className="absolute inset-x-2 bottom-0 h-0.5 rounded-full bg-sky-400" />
-                )}
               </button>
             );
           })}
         </nav>
+        <span className="w-24" />
       </header>
 
       <main className="min-h-0 flex-1">
@@ -85,7 +112,7 @@ export function WorkspaceShell() {
         ) : active === "Properties" ? (
           <Properties />
         ) : (
-          <div className="flex h-full items-center justify-center text-neutral-600">
+          <div className="flex h-full items-center justify-center text-[var(--faint)]">
             {active} workspace — coming soon
           </div>
         )}

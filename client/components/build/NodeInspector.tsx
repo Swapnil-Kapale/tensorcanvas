@@ -28,22 +28,22 @@ function Labeled({
 }) {
   return (
     <label className="block">
-      <span className="mb-1 block text-xs font-medium text-neutral-300">{label}</span>
+      <span className="mb-1 block text-xs font-medium text-[var(--muted)]">{label}</span>
       {children}
-      {help && <span className="mt-1 block text-[11px] text-neutral-500">{help}</span>}
+      {help && <span className="mt-1 block text-[11px] text-[var(--faint)]">{help}</span>}
     </label>
   );
 }
 
 const inputCls =
-  "w-full rounded border border-neutral-700 bg-neutral-800 px-2 py-1.5 text-sm text-neutral-100 outline-none focus:border-sky-500";
+  "w-full rounded border border-[var(--stroke)] bg-black/30 px-2 py-1.5 text-sm text-[var(--text)] outline-none focus:border-[var(--accent)]";
 
 export function NodeInspector({ node, onChange, onDelete }: NodeInspectorProps) {
   const router = useRouter();
   if (!node) {
     return (
-      <div className="p-4 text-sm text-neutral-500">
-        <p className="font-medium text-neutral-400">No node selected</p>
+      <div className="p-4 text-sm text-[var(--faint)]">
+        <p className="font-medium text-[var(--muted)]">No node selected</p>
         <p className="mt-2 leading-relaxed">
           Right-click the canvas to add a node. Click a node to edit its attributes.
           Drag from a node&apos;s right handle to another&apos;s left handle to connect.
@@ -61,10 +61,10 @@ export function NodeInspector({ node, onChange, onDelete }: NodeInspectorProps) 
 
   return (
     <div className="flex h-full flex-col">
-      <div className="border-b border-neutral-800 p-4">
+      <div className="border-b border-[var(--stroke)] p-4">
         <div className="flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-neutral-100">{data.label}</h3>
-          <span className="font-mono text-[11px] text-neutral-500">{node.id}</span>
+          <h3 className="text-sm font-semibold text-[var(--text)]">{data.label}</h3>
+          <span className="font-mono text-[11px] text-[var(--faint)]">{node.id}</span>
         </div>
       </div>
 
@@ -114,16 +114,16 @@ export function NodeInspector({ node, onChange, onDelete }: NodeInspectorProps) 
               type="checkbox"
               checked={data.bias ?? true}
               onChange={(e) => onChange(node.id, { bias: e.target.checked })}
-              className="h-4 w-4 accent-sky-500"
+              className="h-4 w-4 accent-[var(--accent)]"
             />
-            <span className="text-xs font-medium text-neutral-300">Bias</span>
+            <span className="text-xs font-medium text-[var(--muted)]">Bias</span>
           </label>
         )}
 
         {entry?.custom && (
           <div>
             <div className="mb-1 flex items-center justify-between">
-              <span className="text-xs font-medium text-neutral-300">Parameters</span>
+              <span className="text-xs font-medium text-[var(--muted)]">Parameters</span>
               <button
                 className="text-xs text-sky-400 hover:text-sky-300"
                 onClick={() => setExtra([...extra, { key: "", value: "" }])}
@@ -155,7 +155,7 @@ export function NodeInspector({ node, onChange, onDelete }: NodeInspectorProps) 
                     }}
                   />
                   <button
-                    className="px-1 text-neutral-500 hover:text-red-400"
+                    className="px-1 text-[var(--faint)] hover:text-red-400"
                     onClick={() => setExtra(extra.filter((_, j) => j !== i))}
                     aria-label="remove param"
                   >
@@ -170,7 +170,7 @@ export function NodeInspector({ node, onChange, onDelete }: NodeInspectorProps) 
         {data.type === "linear" && (
           <div>
             <div className="mb-1 flex items-center justify-between">
-              <span className="text-xs font-medium text-neutral-300">Weights</span>
+              <span className="text-xs font-medium text-[var(--muted)]">Weights</span>
               <button
                 onClick={() => router.push(`/build/${node.id}`)}
                 className="rounded border border-sky-500/50 px-2 py-0.5 text-xs text-sky-300 hover:bg-sky-500/10"
@@ -197,7 +197,7 @@ export function NodeInspector({ node, onChange, onDelete }: NodeInspectorProps) 
         )}
       </div>
 
-      <div className="border-t border-neutral-800 p-4">
+      <div className="border-t border-[var(--stroke)] p-4">
         <button
           onClick={() => onDelete(node.id)}
           className="w-full rounded border border-red-500/40 px-3 py-1.5 text-sm text-red-300 hover:bg-red-500/10"

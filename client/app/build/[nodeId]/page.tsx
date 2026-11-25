@@ -13,7 +13,7 @@ function EditLayer() {
 
 export default function EditLayerPage() {
   return (
-    <Suspense fallback={<div className="p-8 text-neutral-400">Loading…</div>}>
+    <Suspense fallback={<div className="p-8 text-[var(--muted)]">Loading…</div>}>
       <EditLayer />
     </Suspense>
   );

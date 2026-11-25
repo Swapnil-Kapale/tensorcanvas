@@ -44,3 +44,6 @@ sample-data/*.csv
 /rewrite-history.sh
 /push-and-pr.sh
 /publish-to-github.sh
+
+# Local-only design mockups (not part of the app)
+/design/

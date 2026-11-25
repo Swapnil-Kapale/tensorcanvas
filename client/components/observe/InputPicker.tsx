@@ -89,18 +89,18 @@ export function InputPicker({
     run(modelId, { kind: "vector", values });
   };
 
-  const field = "w-full rounded-md border border-neutral-700 bg-neutral-800/80 px-2 py-1 text-right font-mono text-xs text-neutral-100 outline-none focus:border-violet-500";
+  const field = "w-full rounded-md border border-[var(--stroke)] bg-black/25 px-2 py-1 text-right font-mono text-xs text-[var(--text)] outline-none focus:border-violet-500";
   const btn = "rounded-lg px-3 py-1.5 text-sm font-semibold transition disabled:opacity-40";
-  const outline = btn + " border border-neutral-700 text-neutral-300 hover:bg-neutral-800";
-  const primary = btn + " bg-violet-500 text-neutral-950 hover:bg-violet-400";
+  const outline = btn + " border border-[var(--stroke)] text-[var(--muted)] hover:bg-[var(--glass-hover)]";
+  const primary = btn + " tc-btn-primary";
 
   return (
-    <div className="space-y-3 border-b border-neutral-800 p-4">
+    <div className="space-y-3 border-b border-[var(--stroke)] p-4">
       <div className="flex items-center justify-between">
-        <span className="text-[11px] font-semibold uppercase tracking-wider text-neutral-500">
+        <span className="text-[11px] font-semibold uppercase tracking-wider text-[var(--faint)]">
           Input · [{inputShape.join(", ")}]
         </span>
-        <span className="rounded bg-neutral-800 px-1.5 py-0.5 text-[10px] text-neutral-400">
+        <span className="rounded bg-black/30 px-1.5 py-0.5 text-[10px] text-[var(--muted)]">
           {showImage ? "image network" : "numeric network"}
         </span>
       </div>
@@ -111,17 +111,17 @@ export function InputPicker({
           {bigVector ? (
             <>
               <textarea
-                className="h-28 w-full rounded-md border border-neutral-700 bg-neutral-800/80 p-2 font-mono text-xs text-neutral-100 outline-none focus:border-violet-500"
+                className="h-28 w-full rounded-md border border-[var(--stroke)] bg-black/25 p-2 font-mono text-xs text-[var(--text)] outline-none focus:border-violet-500"
                 placeholder={`Enter ${dim} numbers (comma- or space-separated)`}
                 value={text}
                 onChange={(e) => setText(e.target.value)}
               />
-              <div className="text-[10px] text-neutral-600">{parseVec(text).length}/{dim} values</div>
+              <div className="text-[10px] text-[var(--faint)]">{parseVec(text).length}/{dim} values</div>
             </>
           ) : (
             <div className="grid grid-cols-2 gap-2">
               {Array.from({ length: dim }, (_, i) => vals[i] ?? 0).map((v, i) => (
-                <label key={i} className="flex items-center gap-1 text-[11px] text-neutral-500">
+                <label key={i} className="flex items-center gap-1 text-[11px] text-[var(--faint)]">
                   x{i}
                   <input
                     className={field}
@@ -178,28 +178,28 @@ export function InputPicker({
               </button>
             ))}
           {isImageNet && archs.length > 1 && (
-            <div className="text-center text-[10px] text-neutral-600">pick the one matching your drawn network (load its example first)</div>
+            <div className="text-center text-[10px] text-[var(--faint)]">pick the one matching your drawn network (load its example first)</div>
           )}
-          {pre && <div className="rounded-lg border border-neutral-700 bg-neutral-800/50 p-2 text-[11px] text-neutral-300">{pre}</div>}
+          {pre && <div className="rounded-lg border border-[var(--stroke)] bg-black/25 p-2 text-[11px] text-[var(--muted)]">{pre}</div>}
           <input ref={imgRef} type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && onImage(e.target.files[0])} />
           <button className={primary + " w-full"} disabled={busy} onClick={() => imgRef.current?.click()}>
             Upload an image to classify
           </button>
-          <div className="text-center text-[10px] text-neutral-600">resized to {inputShape.join("×")} automatically · or sample a dataset below</div>
+          <div className="text-center text-[10px] text-[var(--faint)]">resized to {inputShape.join("×")} automatically · or sample a dataset below</div>
         </>
       )}
 
       {/* ── Dataset sampling + random — available for every network ── */}
       <div
         onClick={() => fileRef.current?.click()}
-        className="cursor-pointer rounded-xl border-2 border-dashed border-neutral-700 p-3 text-center text-xs text-neutral-400 hover:border-neutral-600"
+        className="cursor-pointer rounded-xl border-2 border-dashed border-[var(--stroke)] p-3 text-center text-xs text-[var(--muted)] hover:border-[var(--stroke-strong)]"
       >
         <input ref={fileRef} type="file" accept=".csv,.json,.npy,.npz,.zip" className="hidden" onChange={(e) => e.target.files?.[0] && onUpload(e.target.files[0])} />
         {datasetId ? `dataset loaded · ${nSamples} samples` : showImage ? "or an image ZIP (class folders) to sample" : "or upload a dataset to sample an input"}
       </div>
       {datasetId && (
         <>
-          <label className="block text-[11px] text-neutral-500">
+          <label className="block text-[11px] text-[var(--faint)]">
             sample #{index}
             <input type="range" min={0} max={Math.max(0, nSamples - 1)} value={index} onChange={(e) => setIndex(Number(e.target.value))} className="mt-1 w-full accent-violet-500" />
           </label>

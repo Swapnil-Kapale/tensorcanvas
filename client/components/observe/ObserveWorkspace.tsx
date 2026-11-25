@@ -48,32 +48,39 @@ export function ObserveWorkspace() {
 
   if (!modelId) {
     return (
-      <div className="flex h-full flex-col items-center justify-center gap-3 text-center text-neutral-500">
-        <div className="text-base font-medium text-neutral-300">No compiled model yet</div>
+      <div className="flex h-full flex-col items-center justify-center gap-3 text-center text-[var(--faint)]">
+        <div className="text-base font-medium text-[var(--muted)]">No compiled model yet</div>
         <p className="max-w-sm text-sm">Build and Compile a network first, then run it here to watch the forward pass.</p>
       </div>
     );
   }
 
   return (
-    <div className="flex h-full min-h-0">
-      <aside className="flex w-80 shrink-0 flex-col overflow-hidden border-r border-neutral-800 bg-neutral-900/30">
+    <div className="relative h-full min-h-0">
+      {/* base canvas */}
+      <div className="tc-stage absolute inset-0">
+        <NetworkCanvas />
+      </div>
+
+      {/* floating input + snapshots (left) */}
+      <aside className="tc-panel absolute bottom-4 left-4 top-4 z-20 flex w-80 flex-col overflow-auto">
         <InputPicker modelId={modelId} inputShape={modelIO?.input_shape ?? [2]} hasConv={modelIO?.has_conv ?? false} />
         <SnapshotBrowser modelId={modelId} />
       </aside>
 
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-        <div className="min-h-0 flex-1">
-          <NetworkCanvas />
-        </div>
-        {error && <div className="border-t border-red-500/30 bg-red-500/10 px-4 py-1.5 text-xs text-red-300">{error}</div>}
-        <ForwardPassPlayer />
-      </div>
-
-      <aside className="flex w-80 shrink-0 flex-col overflow-hidden border-l border-neutral-800 bg-neutral-900/30">
+      {/* floating output + layer inspector (right) */}
+      <aside className="tc-panel absolute bottom-4 right-4 top-4 z-20 flex w-80 flex-col overflow-auto">
         <OutputPanel />
         <LayerInspector />
       </aside>
+
+      {/* floating transport + error */}
+      <div className="absolute bottom-4 left-1/2 z-20 -translate-x-1/2">
+        {error && (
+          <div className="tc-glass mb-2 rounded-xl border border-red-500/30 px-4 py-1.5 text-center text-xs text-red-300">{error}</div>
+        )}
+        <ForwardPassPlayer />
+      </div>
     </div>
   );
 }

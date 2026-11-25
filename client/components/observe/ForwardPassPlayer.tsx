@@ -8,16 +8,16 @@ export function ForwardPassPlayer() {
   const n = snapshot.order.length;
   const current = snapshot.order[Math.max(0, stepIndex)] ?? "—";
 
-  const btn = "h-8 rounded-lg border border-neutral-700 px-2.5 text-sm text-neutral-300 hover:bg-neutral-800 disabled:opacity-30";
+  const btn = "h-8 rounded-lg border border-[var(--stroke)] px-2.5 text-sm text-[var(--muted)] hover:bg-[var(--glass-hover)] disabled:opacity-30";
 
   return (
-    <div className="flex items-center gap-2 border-t border-neutral-800 bg-neutral-950 px-4 py-2">
+    <div className="tc-glass flex items-center gap-2 rounded-2xl px-4 py-2">
       <button className={btn} onClick={() => seek(0)} title="restart">⏮</button>
       <button className={btn} onClick={() => step(-1)} disabled={stepIndex <= 0} title="step back (←)">◀</button>
       {playing ? (
-        <button className={btn + " !border-violet-500/50 !text-violet-200"} onClick={pause} title="pause (space)">⏸</button>
+        <button className={btn + " !border-[var(--violet)]/50 !text-[var(--violet)]"} onClick={pause} title="pause (space)">⏸</button>
       ) : (
-        <button className={btn + " !border-violet-500/50 !text-violet-200"} onClick={play} title="play (space)">▶</button>
+        <button className={btn + " !border-[var(--violet)]/50 !text-[var(--violet)]"} onClick={play} title="play (space)">▶</button>
       )}
       <button className={btn} onClick={() => step(1)} disabled={stepIndex >= n - 1} title="step forward (→)">▶▶</button>
 
@@ -30,18 +30,18 @@ export function ForwardPassPlayer() {
         onChange={(e) => seek(Number(e.target.value))}
         className="mx-2 flex-1 accent-violet-500"
       />
-      <span className="w-28 shrink-0 font-mono text-[11px] text-neutral-400">
+      <span className="w-28 shrink-0 font-mono text-[11px] text-[var(--muted)]">
         {Math.max(0, stepIndex) + 1}/{n} · {current}
       </span>
 
-      <label className="flex items-center gap-1 text-[11px] text-neutral-400">
+      <label className="flex items-center gap-1 text-[11px] text-[var(--muted)]">
         <input type="checkbox" checked={loop} onChange={(e) => setLoop(e.target.checked)} className="h-3.5 w-3.5 accent-violet-500" />
         loop
       </label>
       <select
         value={speed}
         onChange={(e) => setSpeed(Number(e.target.value))}
-        className="h-8 rounded-lg border border-neutral-700 bg-neutral-800 px-1.5 text-xs text-neutral-200"
+        className="h-8 rounded-lg border border-[var(--stroke)] bg-black/30 px-1.5 text-xs text-[var(--text)]"
         title="speed"
       >
         {[0.5, 1, 2, 4].map((x) => (

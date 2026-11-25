@@ -47,8 +47,8 @@ export function DatasetPanel({
   };
 
   return (
-    <div className="space-y-4 border-b border-neutral-800 p-4">
-      <div className="text-[11px] font-semibold uppercase tracking-wider text-neutral-500">Dataset</div>
+    <div className="space-y-4 border-b border-[var(--stroke)] p-4">
+      <div className="text-[11px] font-semibold uppercase tracking-wider text-[var(--faint)]">Dataset</div>
 
       {/* upload dropzone */}
       <div
@@ -65,7 +65,7 @@ export function DatasetPanel({
         onClick={() => inputRef.current?.click()}
         className={[
           "cursor-pointer rounded-xl border-2 border-dashed p-4 text-center text-xs transition",
-          drag ? "border-sky-500 bg-sky-500/10 text-sky-200" : "border-neutral-700 text-neutral-400 hover:border-neutral-600",
+          drag ? "border-sky-500 bg-sky-500/10 text-sky-200" : "border-[var(--stroke)] text-[var(--muted)] hover:border-[var(--stroke-strong)]",
         ].join(" ")}
       >
         <input
@@ -75,13 +75,13 @@ export function DatasetPanel({
           className="hidden"
           onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])}
         />
-        <div className="font-medium text-neutral-300">{busy ? "Uploading…" : "Drop a dataset or click to upload"}</div>
-        <div className="mt-1 text-[10px] text-neutral-500">CSV · JSON · NPY/NPZ · image ZIP (class folders)</div>
+        <div className="font-medium text-[var(--muted)]">{busy ? "Uploading…" : "Drop a dataset or click to upload"}</div>
+        <div className="mt-1 text-[10px] text-[var(--faint)]">CSV · JSON · NPY/NPZ · image ZIP (class folders)</div>
       </div>
 
       {modelIO?.builtins?.length ? (
         <div>
-          <div className="mb-1 text-[10px] text-neutral-500">or a built-in (2-D):</div>
+          <div className="mb-1 text-[10px] text-[var(--faint)]">or a built-in (2-D):</div>
           <div className="flex flex-wrap gap-1.5">
             {modelIO.builtins.map((b) => (
               <button
@@ -89,7 +89,7 @@ export function DatasetPanel({
                 title={b.blurb}
                 disabled={busy}
                 onClick={() => pickBuiltin(b.id)}
-                className="rounded-lg border border-neutral-700 px-2.5 py-1 text-xs text-neutral-300 hover:bg-neutral-800 disabled:opacity-40"
+                className="rounded-lg border border-[var(--stroke)] px-2.5 py-1 text-xs text-[var(--muted)] hover:bg-[var(--glass-hover)] disabled:opacity-40"
               >
                 {b.id}
               </button>
@@ -103,8 +103,8 @@ export function DatasetPanel({
       {dataset && (
         <div className="space-y-2">
           <div className="flex items-center justify-between text-xs">
-            <span className="font-mono text-neutral-400">{dataset.format}</span>
-            <span className="text-neutral-500">
+            <span className="font-mono text-[var(--muted)]">{dataset.format}</span>
+            <span className="text-[var(--faint)]">
               {dataset.n_samples} samples · {dataset.task}
               {dataset.n_classes ? ` · ${dataset.n_classes} cls` : ""}
             </span>
@@ -118,7 +118,7 @@ export function DatasetPanel({
               ))}
             </div>
           ) : (
-            <div className="rounded-lg bg-neutral-800/50 p-2 text-[11px] text-neutral-500">
+            <div className="rounded-lg bg-black/25 p-2 text-[11px] text-[var(--faint)]">
               feature shape [{(dataset.feature_shape ?? []).join(", ")}]
             </div>
           )}
@@ -136,7 +136,7 @@ export function DatasetPanel({
           )}
         </div>
       )}
-      {disabled && <div className="text-[10px] text-neutral-600">Stop the current run to change the dataset.</div>}
+      {disabled && <div className="text-[10px] text-[var(--faint)]">Stop the current run to change the dataset.</div>}
     </div>
   );
 }
@@ -156,5 +156,5 @@ function Thumb({ data, size }: { data: number[]; size: number }) {
     }
     ctx.putImageData(img, 0, 0);
   }, [data, size]);
-  return <canvas ref={ref} width={size} height={size} className="h-7 w-7 rounded border border-neutral-700" />;
+  return <canvas ref={ref} width={size} height={size} className="h-7 w-7 rounded border border-[var(--stroke)]" />;
 }
