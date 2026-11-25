@@ -94,6 +94,7 @@ function BuildCanvasInner() {
   const [notice, setNotice] = useState<string | null>(null);
   const { screenToFlowPosition, getNodes } = useReactFlow();
   const paneRef = useRef<HTMLDivElement>(null);
+  const exRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const addOffset = useRef(0);
 
@@ -101,6 +102,22 @@ function BuildCanvasInner() {
   useEffect(() => {
     hydrate();
   }, [hydrate]);
+
+  // Close the "Load example" menu on an outside click or Escape — NOT on
+  // mouse-leave, which used to close it before a click on an item could land.
+  useEffect(() => {
+    if (!exMenu) return;
+    const onDown = (e: MouseEvent) => {
+      if (exRef.current && !exRef.current.contains(e.target as Node)) setExMenu(false);
+    };
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setExMenu(false);
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [exMenu]);
 
   const selectedNode = useMemo(() => nodes.find((n) => n.selected) ?? null, [nodes]);
 
@@ -282,7 +299,7 @@ function BuildCanvasInner() {
         >
           {compiling ? "Compiling…" : "Compile"}
         </button>
-        <div className="relative">
+        <div className="relative" ref={exRef}>
           <button
             onClick={() => setExMenu((v) => !v)}
             className="rounded border border-neutral-700 px-3 py-1.5 text-sm text-neutral-300 hover:bg-neutral-800"
@@ -292,7 +309,6 @@ function BuildCanvasInner() {
           {exMenu && (
             <div
               className="absolute left-0 top-full z-30 mt-1 w-56 overflow-hidden rounded-lg border border-neutral-700 bg-neutral-900 py-1 shadow-2xl"
-              onMouseLeave={() => setExMenu(false)}
             >
               {EXAMPLES.map((grp) => (
                 <div key={grp.group} className="py-0.5">

@@ -36,10 +36,6 @@ server/.venv/
 .ruff_cache/
 .coverage
 
-# ── Build output ───────────────────────────────────────────────────────────────
-dist/
-build/
-
 # ── Large generated sample data (regenerable via sample-data/generate.py) ──────
 sample-data/*.csv
 
