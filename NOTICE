@@ -1,0 +1,17 @@
+TensorCanvas
+Copyright 2026 Swapnil Kapale and Aryan Tandon
+
+This product is developed as an academic project and is licensed under the
+Apache License, Version 2.0 (see the LICENSE file).
+
+This software depends on third-party open-source packages, each distributed
+under its own license, including (non-exhaustively):
+  - PyTorch and torchvision (BSD-3-Clause)
+  - FastAPI, Uvicorn, Starlette, Pydantic (MIT / BSD)
+  - NumPy (BSD-3-Clause), Pillow (HPND/MIT-CMU)
+  - Next.js, React, Zustand, Tailwind CSS, React Flow / @xyflow (MIT)
+
+Pretrained model weights (e.g. AlexNet) are NOT distributed with this project.
+They are downloaded at runtime from torchvision (BSD-3-Clause) and were trained
+on ImageNet, whose terms restrict use to non-commercial research and education.
+TensorCanvas does not redistribute these weights or the ImageNet dataset.

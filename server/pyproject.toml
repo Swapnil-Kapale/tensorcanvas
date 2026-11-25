@@ -3,6 +3,7 @@ name = "tensorcanvas-server"
 version = "0.1.0"
 description = "TensorCanvas backend — build and inspect neural networks from a JSON graph."
 readme = "README.md"
+license = "Apache-2.0"
 authors = [
     { name = "Swapnil Kapale", email = "swapnilkapaledev@gmail.com" },
     { name = "Aryan Tandon", email = "aryan.tandon03@gmail.com" },

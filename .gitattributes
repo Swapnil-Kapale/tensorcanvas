@@ -1,0 +1,6 @@
+# Keep shell scripts LF so dev.sh runs on macOS/Linux/WSL regardless of the
+# committer's platform.
+*.sh text eol=lf
+
+# Let Git normalize line endings for text; detect everything else automatically.
+* text=auto
