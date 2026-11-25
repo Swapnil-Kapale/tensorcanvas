@@ -3,14 +3,14 @@
 import { useTrain } from "@/lib/trainStore";
 
 const field =
-  "w-24 rounded-md border border-neutral-700 bg-neutral-800/80 px-2 py-1 text-right font-mono text-xs text-neutral-100 outline-none focus:border-sky-500";
+  "w-24 rounded-md border border-[var(--stroke)] bg-black/25 px-2 py-1 text-right font-mono text-xs text-[var(--text)] outline-none focus:border-[var(--accent)]";
 const sel =
-  "rounded-md border border-neutral-700 bg-neutral-800/80 px-2 py-1 text-xs text-neutral-100 outline-none focus:border-sky-500";
+  "rounded-md border border-[var(--stroke)] bg-black/25 px-2 py-1 text-xs text-[var(--text)] outline-none focus:border-[var(--accent)]";
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="space-y-2">
-      <div className="text-[11px] font-semibold uppercase tracking-wider text-neutral-500">{title}</div>
+      <div className="text-[11px] font-semibold uppercase tracking-wider text-[var(--faint)]">{title}</div>
       <div className="space-y-2">{children}</div>
     </div>
   );
@@ -18,7 +18,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <label className="flex items-center justify-between gap-2 text-xs text-neutral-400">
+    <label className="flex items-center justify-between gap-2 text-xs text-[var(--muted)]">
       <span>{label}</span>
       {children}
     </label>
@@ -36,8 +36,8 @@ export function ConfigPanel({ disabled }: { disabled: boolean }) {
         <Row label="epochs"><input type="number" className={field} value={c.epochs} onChange={num("epochs")} /></Row>
         <Row label="batch size"><input type="number" className={field} value={c.batch_size} onChange={num("batch_size")} /></Row>
         <Row label="val split"><input type="number" step="0.05" className={field} value={c.val_split} onChange={num("val_split")} /></Row>
-        <Row label="shuffle"><input type="checkbox" className="h-4 w-4 accent-sky-500" checked={c.shuffle} onChange={(e) => set({ shuffle: e.target.checked })} /></Row>
-        <Row label="standardize X"><input type="checkbox" className="h-4 w-4 accent-sky-500" checked={c.standardize} onChange={(e) => set({ standardize: e.target.checked })} /></Row>
+        <Row label="shuffle"><input type="checkbox" className="h-4 w-4 accent-[var(--accent)]" checked={c.shuffle} onChange={(e) => set({ shuffle: e.target.checked })} /></Row>
+        <Row label="standardize X"><input type="checkbox" className="h-4 w-4 accent-[var(--accent)]" checked={c.standardize} onChange={(e) => set({ standardize: e.target.checked })} /></Row>
       </Section>
 
       <Section title="Loss">
@@ -65,7 +65,7 @@ export function ConfigPanel({ disabled }: { disabled: boolean }) {
           <Row label="momentum"><input type="number" step="0.05" className={field} value={c.momentum} onChange={num("momentum")} /></Row>
         )}
         {c.optimizer === "sgd" && (
-          <Row label="nesterov"><input type="checkbox" className="h-4 w-4 accent-sky-500" checked={c.nesterov} onChange={(e) => set({ nesterov: e.target.checked })} /></Row>
+          <Row label="nesterov"><input type="checkbox" className="h-4 w-4 accent-[var(--accent)]" checked={c.nesterov} onChange={(e) => set({ nesterov: e.target.checked })} /></Row>
         )}
         {(c.optimizer === "adam" || c.optimizer === "adamw") && (
           <>
@@ -101,11 +101,11 @@ export function ConfigPanel({ disabled }: { disabled: boolean }) {
       <Section title="Regularization & stability">
         <Row label="grad clip"><input type="number" step="0.5" placeholder="off" className={field} value={c.grad_clip ?? ""} onChange={(e) => set({ grad_clip: e.target.value === "" ? null : Number(e.target.value) })} /></Row>
         <Row label="grad accum"><input type="number" className={field} value={c.grad_accum} onChange={num("grad_accum")} /></Row>
-        <Row label="early stopping"><input type="checkbox" className="h-4 w-4 accent-sky-500" checked={c.early_stopping.enabled} onChange={(e) => set({ early_stopping: { ...c.early_stopping, enabled: e.target.checked } })} /></Row>
+        <Row label="early stopping"><input type="checkbox" className="h-4 w-4 accent-[var(--accent)]" checked={c.early_stopping.enabled} onChange={(e) => set({ early_stopping: { ...c.early_stopping, enabled: e.target.checked } })} /></Row>
         {c.early_stopping.enabled && (
           <>
             <Row label="es patience"><input type="number" className={field} value={c.early_stopping.patience} onChange={(e) => set({ early_stopping: { ...c.early_stopping, patience: Number(e.target.value) } })} /></Row>
-            <Row label="restore best"><input type="checkbox" className="h-4 w-4 accent-sky-500" checked={c.early_stopping.restore_best} onChange={(e) => set({ early_stopping: { ...c.early_stopping, restore_best: e.target.checked } })} /></Row>
+            <Row label="restore best"><input type="checkbox" className="h-4 w-4 accent-[var(--accent)]" checked={c.early_stopping.restore_best} onChange={(e) => set({ early_stopping: { ...c.early_stopping, restore_best: e.target.checked } })} /></Row>
           </>
         )}
       </Section>

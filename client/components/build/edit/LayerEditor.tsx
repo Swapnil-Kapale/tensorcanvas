@@ -53,13 +53,13 @@ function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: numbe
 
 function StatTile({ label, value, mono, accent }: { label: string; value: string; mono?: boolean; accent?: boolean }) {
   return (
-    <div className="flex flex-col rounded-lg bg-neutral-800/50 px-2.5 py-1 ring-1 ring-inset ring-neutral-800">
-      <span className="text-[10px] uppercase tracking-wide text-neutral-500">{label}</span>
+    <div className="flex flex-col rounded-lg bg-black/25 px-2.5 py-1 ring-1 ring-inset ring-[var(--stroke)]">
+      <span className="text-[10px] uppercase tracking-wide text-[var(--faint)]">{label}</span>
       <span
         className={[
           "text-xs font-semibold",
           mono ? "font-mono" : "",
-          accent ? "text-sky-300" : "text-neutral-200",
+          accent ? "text-sky-300" : "text-[var(--text)]",
         ].join(" ")}
       >
         {value}
@@ -214,7 +214,7 @@ export function LayerEditor({ nodeId, mode = "initial" }: { nodeId: string; mode
   if (!node) {
     return (
       <Frame onBack={() => router.push("/")}>
-        <p className="p-10 text-neutral-400">Node not found. It may have been removed.</p>
+        <p className="p-10 text-[var(--muted)]">Node not found. It may have been removed.</p>
       </Frame>
     );
   }
@@ -222,7 +222,7 @@ export function LayerEditor({ nodeId, mode = "initial" }: { nodeId: string; mode
     const msg = fetchErr ?? (lastModelId ? "Loading…" : "Compile the network first to load this layer's weights.");
     return (
       <Frame onBack={() => router.push("/")} title={node.data.label}>
-        <p className="p-10 text-neutral-400">{msg}</p>
+        <p className="p-10 text-[var(--muted)]">{msg}</p>
       </Frame>
     );
   }
@@ -301,29 +301,29 @@ export function LayerEditor({ nodeId, mode = "initial" }: { nodeId: string; mode
     router.push("/");
   };
 
-  const micro = "text-[11px] font-semibold uppercase tracking-wider text-neutral-500";
+  const micro = "text-[11px] font-semibold uppercase tracking-wider text-[var(--faint)]";
 
   return (
-    <div className="flex h-full min-h-0 flex-col bg-neutral-950 text-neutral-100 antialiased">
+    <div className="flex h-full min-h-0 flex-col bg-transparent text-[var(--text)] antialiased">
       {/* HEADER */}
-      <header className="border-b border-neutral-800">
+      <header className="border-b border-[var(--stroke)]">
         <div className="flex items-center gap-4 px-6 py-3">
           <button
             onClick={() => router.push("/")}
-            className="flex h-9 items-center gap-1.5 rounded-lg border border-neutral-700/80 px-3 text-sm text-neutral-300 transition hover:border-neutral-600 hover:bg-neutral-800/60"
+            className="flex h-9 items-center gap-1.5 rounded-lg border border-[var(--stroke)] px-3 text-sm text-[var(--muted)] transition hover:border-[var(--stroke-strong)] hover:bg-[var(--glass-hover)]"
           >
             <span aria-hidden>←</span> Back
           </button>
-          <div className="h-6 w-px bg-neutral-800" />
+          <div className="h-6 w-px bg-black/30" />
           <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-sky-500/15 font-mono text-sm text-sky-300 ring-1 ring-inset ring-sky-500/30">
             W
           </div>
           <div className="flex items-baseline gap-2.5">
-            <h1 className="text-base font-semibold tracking-tight text-neutral-50">{node.data.label}</h1>
-            <span className="rounded-md bg-neutral-800 px-2 py-0.5 font-mono text-xs font-medium text-neutral-400">
+            <h1 className="text-base font-semibold tracking-tight text-[var(--text)]">{node.data.label}</h1>
+            <span className="rounded-md bg-black/30 px-2 py-0.5 font-mono text-xs font-medium text-[var(--muted)]">
               {node.id}
             </span>
-            <span className="font-mono text-xs text-neutral-500">
+            <span className="font-mono text-xs text-[var(--faint)]">
               {out} × {inp}
             </span>
           </div>
@@ -336,19 +336,19 @@ export function LayerEditor({ nodeId, mode = "initial" }: { nodeId: string; mode
             {saveErr && <span className="max-w-[260px] truncate text-xs text-red-300">{saveErr}</span>}
             <button
               onClick={() => router.push("/")}
-              className="h-9 rounded-lg border border-neutral-700/80 px-4 text-sm text-neutral-300 transition hover:bg-neutral-800/60"
+              className="h-9 rounded-lg border border-[var(--stroke)] px-4 text-sm text-[var(--muted)] transition hover:bg-[var(--glass-hover)]"
             >
               Discard
             </button>
             <button
               onClick={save}
-              className="h-9 rounded-lg bg-sky-500 px-4 text-sm font-semibold text-neutral-950 shadow-lg shadow-sky-950/50 transition hover:bg-sky-400 active:bg-sky-500"
+              className="h-9 rounded-lg tc-btn-primary px-4 text-sm"
             >
               {mode === "live" ? "Apply (live)" : "Apply changes"}
             </button>
           </div>
         </div>
-        <div className="flex items-center gap-2 overflow-x-auto border-t border-neutral-800/60 bg-neutral-900/40 px-6 py-2.5">
+        <div className="flex items-center gap-2 overflow-x-auto border-t border-[var(--stroke)] bg-[var(--glass)] px-6 py-2.5">
           <label className="flex items-center gap-2 rounded-lg bg-violet-500/10 px-2.5 py-1.5 text-xs ring-1 ring-inset ring-violet-500/25">
             <span className="font-medium text-violet-300">activation</span>
             <select
@@ -357,7 +357,7 @@ export function LayerEditor({ nodeId, mode = "initial" }: { nodeId: string; mode
               className="rounded-md bg-violet-500/15 px-2 py-0.5 text-xs font-semibold text-violet-100 outline-none focus:ring-1 focus:ring-violet-400"
             >
               {ACTIVATIONS.map((a) => (
-                <option key={a} value={a} className="bg-neutral-900">
+                <option key={a} value={a} className="bg-[var(--glass-strong)]">
                   {a} {ACTIVATION_GLYPH[a] ? `(${ACTIVATION_GLYPH[a]})` : ""}
                 </option>
               ))}
@@ -368,7 +368,7 @@ export function LayerEditor({ nodeId, mode = "initial" }: { nodeId: string; mode
               "flex cursor-pointer items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs ring-1 ring-inset transition",
               useBias
                 ? "bg-amber-500/10 text-amber-200 ring-amber-500/25"
-                : "bg-neutral-800/60 text-neutral-400 ring-neutral-700",
+                : "bg-black/30/60 text-[var(--muted)] ring-[var(--stroke)]",
             ].join(" ")}
           >
             <input
@@ -379,7 +379,7 @@ export function LayerEditor({ nodeId, mode = "initial" }: { nodeId: string; mode
             />
             bias
           </label>
-          <div className="mx-1 h-5 w-px bg-neutral-800" />
+          <div className="mx-1 h-5 w-px bg-black/30" />
           <StatTile label="params" value={stats.params.toLocaleString()} />
           <StatTile label="min" value={stats.min.toFixed(3)} mono />
           <StatTile label="max" value={stats.max.toFixed(3)} mono />
@@ -392,22 +392,22 @@ export function LayerEditor({ nodeId, mode = "initial" }: { nodeId: string; mode
         {/* HEATMAP */}
         <section className="flex min-h-0 min-w-0 flex-1 flex-col">
           <div className="flex items-center gap-3 px-6 pt-4 pb-2">
-            <p className="text-xs text-neutral-500">Click a cell to focus a neuron / weight · blue = |weight|</p>
+            <p className="text-xs text-[var(--faint)]">Click a cell to focus a neuron / weight · blue = |weight|</p>
             <div className="ml-auto flex items-center gap-2">
-              <span className="min-w-[180px] rounded-md bg-neutral-800/70 px-2.5 py-1 text-right font-mono text-xs text-neutral-300 ring-1 ring-inset ring-neutral-700">
+              <span className="min-w-[180px] rounded-md bg-black/25 px-2.5 py-1 text-right font-mono text-xs text-[var(--muted)] ring-1 ring-inset ring-[var(--stroke)]">
                 {hover ? `w[${hover.i}][${hover.j}] = ${hover.v.toFixed(4)}` : "hover a cell"}
               </span>
-              <div className="flex items-center rounded-lg ring-1 ring-inset ring-neutral-700">
+              <div className="flex items-center rounded-lg ring-1 ring-inset ring-[var(--stroke)]">
                 <button
                   onClick={() => setZoom((z) => stepZoom(z ?? cell, -1, hardMax))}
-                  className="px-2.5 py-1 text-neutral-300 hover:bg-neutral-800"
+                  className="px-2.5 py-1 text-[var(--muted)] hover:bg-[var(--glass-hover)]"
                 >
                   −
                 </button>
-                <span className="w-14 text-center font-mono text-xs text-neutral-400">{cell}px</span>
+                <span className="w-14 text-center font-mono text-xs text-[var(--muted)]">{cell}px</span>
                 <button
                   onClick={() => setZoom((z) => stepZoom(z ?? cell, +1, hardMax))}
-                  className="px-2.5 py-1 text-neutral-300 hover:bg-neutral-800"
+                  className="px-2.5 py-1 text-[var(--muted)] hover:bg-[var(--glass-hover)]"
                 >
                   +
                 </button>
@@ -415,7 +415,7 @@ export function LayerEditor({ nodeId, mode = "initial" }: { nodeId: string; mode
               <button
                 onClick={() => setZoom(null)}
                 title="Reset to a readable default size"
-                className="rounded-lg px-2.5 py-1 text-xs text-neutral-400 ring-1 ring-inset ring-neutral-700 hover:bg-neutral-800"
+                className="rounded-lg px-2.5 py-1 text-xs text-[var(--muted)] ring-1 ring-inset ring-[var(--stroke)] hover:bg-[var(--glass-hover)]"
               >
                 Reset
               </button>
@@ -424,7 +424,7 @@ export function LayerEditor({ nodeId, mode = "initial" }: { nodeId: string; mode
           <div
             ref={wrapRef}
             onScroll={(e) => setScroll({ left: e.currentTarget.scrollLeft, top: e.currentTarget.scrollTop })}
-            className="relative mx-6 min-h-0 flex-1 overflow-auto rounded-2xl border border-neutral-800 bg-[radial-gradient(circle_at_30%_20%,#171717,#0a0a0a)]"
+            className="relative mx-6 min-h-0 flex-1 overflow-auto rounded-2xl border border-[var(--stroke)] bg-[radial-gradient(circle_at_30%_20%,#171717,#0a0a0a)]"
           >
             <div aria-hidden style={{ width: inp * cell, height: out * cell }} />
             <canvas
@@ -437,23 +437,23 @@ export function LayerEditor({ nodeId, mode = "initial" }: { nodeId: string; mode
             />
           </div>
           <div className="flex items-center gap-2 px-6 py-3">
-            <span className="text-xs text-neutral-500">|weight|</span>
-            <span className="font-mono text-[10px] text-neutral-500">0</span>
+            <span className="text-xs text-[var(--faint)]">|weight|</span>
+            <span className="font-mono text-[10px] text-[var(--faint)]">0</span>
             <div
-              className="h-2.5 w-40 rounded-full ring-1 ring-inset ring-neutral-700"
+              className="h-2.5 w-40 rounded-full ring-1 ring-inset ring-[var(--stroke)]"
               style={{ background: "linear-gradient(90deg, rgba(56,189,248,0.06), rgba(56,189,248,1))" }}
             />
-            <span className="font-mono text-[10px] text-neutral-500">{stats.absMax.toFixed(2)}</span>
-            <span className="ml-3 font-mono text-[10px] text-neutral-500">μ {stats.mean.toFixed(3)}</span>
+            <span className="font-mono text-[10px] text-[var(--faint)]">{stats.absMax.toFixed(2)}</span>
+            <span className="ml-3 font-mono text-[10px] text-[var(--faint)]">μ {stats.mean.toFixed(3)}</span>
           </div>
         </section>
 
         {/* SIDEBAR */}
-        <aside className="flex w-[440px] shrink-0 flex-col border-l border-neutral-800 bg-neutral-900/40 lg:w-[380px] xl:w-[440px]">
-          <div className="border-b border-neutral-800 p-5">
+        <aside className="flex w-[440px] shrink-0 flex-col border-l border-[var(--stroke)] bg-[var(--glass)] lg:w-[380px] xl:w-[440px]">
+          <div className="border-b border-[var(--stroke)] p-5">
             <div className="flex items-center justify-between">
               <span className={micro}>Neuron</span>
-              <span className="font-mono text-xs text-neutral-500">
+              <span className="font-mono text-xs text-[var(--faint)]">
                 {sel + 1} / {out}
               </span>
             </div>
@@ -461,7 +461,7 @@ export function LayerEditor({ nodeId, mode = "initial" }: { nodeId: string; mode
               <button
                 onClick={() => pick(sel - 1)}
                 disabled={sel === 0}
-                className="h-9 w-9 rounded-lg text-neutral-300 ring-1 ring-inset ring-neutral-700 hover:bg-neutral-800 disabled:opacity-30"
+                className="h-9 w-9 rounded-lg text-[var(--muted)] ring-1 ring-inset ring-[var(--stroke)] hover:bg-[var(--glass-hover)] disabled:opacity-30"
               >
                 ‹
               </button>
@@ -471,12 +471,12 @@ export function LayerEditor({ nodeId, mode = "initial" }: { nodeId: string; mode
                 max={out - 1}
                 value={sel}
                 onChange={(e) => pick(Number(e.target.value) || 0)}
-                className="h-9 w-full rounded-lg border border-neutral-700 bg-neutral-800/80 px-3 text-center font-mono text-base font-semibold text-neutral-100 outline-none focus:border-sky-500"
+                className="h-9 w-full rounded-lg border border-[var(--stroke)] bg-black/25 px-3 text-center font-mono text-base font-semibold text-[var(--text)] outline-none focus:border-[var(--accent)]"
               />
               <button
                 onClick={() => pick(sel + 1)}
                 disabled={sel === out - 1}
-                className="h-9 w-9 rounded-lg text-neutral-300 ring-1 ring-inset ring-neutral-700 hover:bg-neutral-800 disabled:opacity-30"
+                className="h-9 w-9 rounded-lg text-[var(--muted)] ring-1 ring-inset ring-[var(--stroke)] hover:bg-[var(--glass-hover)] disabled:opacity-30"
               >
                 ›
               </button>
@@ -497,16 +497,16 @@ export function LayerEditor({ nodeId, mode = "initial" }: { nodeId: string; mode
             </div>
           </div>
 
-          <div className="space-y-3 border-b border-neutral-800 p-5">
+          <div className="space-y-3 border-b border-[var(--stroke)] p-5">
             <div className="flex items-center justify-between gap-3">
-              <span className="text-sm text-neutral-400">activation</span>
+              <span className="text-sm text-[var(--muted)]">activation</span>
               <select
                 value={perAct[sel] ?? "none"}
                 onChange={(e) => setNeuronAct(sel, e.target.value)}
                 className="rounded-lg border border-violet-700/40 bg-violet-500/10 px-3 py-2 text-sm font-medium text-violet-100 outline-none focus:border-violet-500"
               >
                 {ACTIVATIONS.map((a) => (
-                  <option key={a} value={a} className="bg-neutral-900">
+                  <option key={a} value={a} className="bg-[var(--glass-strong)]">
                     {a}
                   </option>
                 ))}
@@ -514,7 +514,7 @@ export function LayerEditor({ nodeId, mode = "initial" }: { nodeId: string; mode
             </div>
             {useBias && (
               <div className="flex items-center justify-between gap-3">
-                <span className="text-sm text-neutral-400">bias</span>
+                <span className="text-sm text-[var(--muted)]">bias</span>
                 <input
                   value={bias?.[sel] ?? 0}
                   onChange={(e) => setBiasAt(sel, e.target.value)}
@@ -527,7 +527,7 @@ export function LayerEditor({ nodeId, mode = "initial" }: { nodeId: string; mode
           <div className="flex min-h-0 flex-1 flex-col p-5">
             <div className="mb-3 flex items-center justify-between">
               <span className={micro}>Incoming weights</span>
-              <span className="font-mono text-xs text-neutral-500">{inp}</span>
+              <span className="font-mono text-xs text-[var(--faint)]">{inp}</span>
             </div>
             <div className="min-h-0 flex-1 space-y-1 overflow-auto">
               {matrix[sel].map((v, j) => (
@@ -537,10 +537,10 @@ export function LayerEditor({ nodeId, mode = "initial" }: { nodeId: string; mode
                   className={
                     j === selCol
                       ? "relative flex items-center gap-2.5 rounded-lg bg-amber-500/10 px-2 py-1 ring-1 ring-inset ring-amber-500/40"
-                      : "relative flex items-center gap-2.5 rounded-lg px-2 py-1 transition hover:bg-neutral-800/40"
+                      : "relative flex items-center gap-2.5 rounded-lg px-2 py-1 transition hover:bg-[var(--glass-hover)]/40"
                   }
                 >
-                  <span className="w-9 shrink-0 font-mono text-[11px] text-neutral-600">w{j}</span>
+                  <span className="w-9 shrink-0 font-mono text-[11px] text-[var(--faint)]">w{j}</span>
                   <div className="relative flex-1">
                     <div
                       className="pointer-events-none absolute inset-y-0 left-0 rounded-md bg-sky-500/15"
@@ -549,7 +549,7 @@ export function LayerEditor({ nodeId, mode = "initial" }: { nodeId: string; mode
                     <input
                       value={Number.isInteger(v) ? v : Number(v.toFixed(5))}
                       onChange={(e) => setCell(sel, j, e.target.value)}
-                      className="relative w-full rounded-md border border-neutral-700/60 bg-transparent px-2.5 py-1.5 text-right font-mono text-sm text-neutral-100 outline-none focus:border-sky-500 focus:bg-neutral-800/70"
+                      className="relative w-full rounded-md border border-[var(--stroke)]/60 bg-transparent px-2.5 py-1.5 text-right font-mono text-sm text-[var(--text)] outline-none focus:border-[var(--accent)] focus:bg-black/25"
                     />
                   </div>
                 </div>
@@ -564,16 +564,16 @@ export function LayerEditor({ nodeId, mode = "initial" }: { nodeId: string; mode
 
 function Frame({ onBack, title, children }: { onBack: () => void; title?: string; children: React.ReactNode }) {
   return (
-    <div className="flex h-full min-h-0 flex-col bg-neutral-950 text-neutral-100">
-      <header className="flex items-center gap-4 border-b border-neutral-800 px-6 py-4">
+    <div className="flex h-full min-h-0 flex-col bg-transparent text-[var(--text)]">
+      <header className="flex items-center gap-4 border-b border-[var(--stroke)] px-6 py-4">
         <button
           onClick={onBack}
-          className="rounded-lg border border-neutral-700 px-4 py-2 text-sm text-neutral-300 transition hover:bg-neutral-800"
+          className="rounded-lg border border-[var(--stroke)] px-4 py-2 text-sm text-[var(--muted)] transition hover:bg-[var(--glass-hover)]"
         >
           ← Back
         </button>
         <h1 className="text-base font-semibold">
-          Edit layer{title ? <span className="font-normal text-neutral-400"> · {title}</span> : null}
+          Edit layer{title ? <span className="font-normal text-[var(--muted)]"> · {title}</span> : null}
         </h1>
       </header>
       <div className="flex min-h-0 flex-1 flex-col">{children}</div>

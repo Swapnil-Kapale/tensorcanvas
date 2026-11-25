@@ -91,7 +91,7 @@ export function DecisionBoundary({
   }, [boundary, scatter, size]);
 
   return (
-    <canvas ref={ref} className="rounded-xl border border-neutral-800" style={{ width: size, height: size }} />
+    <canvas ref={ref} className="rounded-xl border border-[var(--stroke)]" style={{ width: size, height: size }} />
   );
 }
 

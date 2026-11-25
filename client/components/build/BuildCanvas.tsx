@@ -281,43 +281,75 @@ function BuildCanvasInner() {
   );
 
   const tbBtn =
-    "flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-sm text-neutral-300 transition hover:bg-neutral-800 disabled:opacity-30 disabled:hover:bg-transparent";
+    "flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-sm text-[var(--muted)] transition hover:bg-[var(--glass-hover)] hover:text-[var(--text)] disabled:opacity-30 disabled:hover:bg-transparent";
 
   return (
-    <div className="flex h-full min-h-0 flex-col">
-      <div className="flex items-center gap-3 border-b border-neutral-800 bg-neutral-950 px-4 py-2">
+    <div className="relative h-full min-h-0">
+      {/* ── base canvas: borderless, immersive lowest layer ── */}
+      <div
+        ref={paneRef}
+        className="tc-stage absolute inset-0"
+        onDragOver={(e) => {
+          if (e.dataTransfer.types.includes("Files")) e.preventDefault();
+        }}
+        onDrop={(e) => {
+          if (e.dataTransfer.files?.[0]) {
+            e.preventDefault();
+            importFile(e.dataTransfer.files[0]);
+          }
+        }}
+      >
+        <ReactFlow
+          nodes={nodes}
+          edges={renderEdges}
+          onNodesChange={onNodesChange}
+          onEdgesChange={onEdgesChange}
+          onConnect={connect}
+          onNodeDragStart={() => recordNow()}
+          onEdgeClick={(_, edge) => setSelEdge(edge.id.split("::")[0])}
+          onNodeClick={() => setSelEdge(null)}
+          onPaneClick={() => setSelEdge(null)}
+          onPaneContextMenu={onPaneContextMenu}
+          nodeTypes={nodeTypes}
+          deleteKeyCode={null}
+          fitView
+          proOptions={{ hideAttribution: true }}
+        >
+          <Background color="rgba(255,255,255,0.07)" gap={26} />
+          <Controls />
+          <MiniMap pannable zoomable />
+        </ReactFlow>
+      </div>
+
+      {/* ── floating sub-toolbar ── */}
+      <div className="tc-glass absolute left-4 top-4 z-20 flex items-center gap-2 rounded-2xl px-3 py-2">
         <input
           value={modelName}
           onChange={(e) => setModelName(e.target.value)}
-          className="w-40 rounded border border-neutral-700 bg-neutral-800 px-2 py-1 text-sm text-neutral-100 outline-none focus:border-sky-500"
+          className="tc-field w-36 px-2 py-1 text-sm"
           aria-label="model name"
         />
         <button
           onClick={compile}
           disabled={compiling || nodes.length === 0}
-          className="rounded bg-sky-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-sky-500 disabled:opacity-40"
+          className="tc-btn-primary rounded-lg px-3 py-1.5 text-sm"
         >
           {compiling ? "Compiling…" : "Compile"}
         </button>
         <div className="relative" ref={exRef}>
-          <button
-            onClick={() => setExMenu((v) => !v)}
-            className="rounded border border-neutral-700 px-3 py-1.5 text-sm text-neutral-300 hover:bg-neutral-800"
-          >
+          <button onClick={() => setExMenu((v) => !v)} className="tc-btn px-3 py-1.5 text-sm">
             Load example ▾
           </button>
           {exMenu && (
-            <div
-              className="absolute left-0 top-full z-30 mt-1 w-56 overflow-hidden rounded-lg border border-neutral-700 bg-neutral-900 py-1 shadow-2xl"
-            >
+            <div className="tc-glass absolute left-0 top-full z-30 mt-2 w-56 overflow-hidden rounded-xl py-1">
               {EXAMPLES.map((grp) => (
                 <div key={grp.group} className="py-0.5">
-                  <div className="px-3 pt-1 text-[10px] font-semibold uppercase tracking-wide text-neutral-600">{grp.group}</div>
+                  <div className="px-3 pt-1 text-[10px] font-semibold uppercase tracking-wide text-[var(--faint)]">{grp.group}</div>
                   {grp.items.map((it) => (
                     <button
                       key={it.id}
                       onClick={() => loadGraph(it.make(), `Loaded ${it.label}`)}
-                      className="block w-full px-3 py-1.5 text-left text-sm text-neutral-200 hover:bg-neutral-700/70"
+                      className="block w-full px-3 py-1.5 text-left text-sm text-[var(--text)] hover:bg-[var(--glass-hover)]"
                     >
                       {it.label}
                     </button>
@@ -334,134 +366,85 @@ function BuildCanvasInner() {
           className="hidden"
           onChange={(e) => e.target.files?.[0] && importFile(e.target.files[0])}
         />
-        <button onClick={() => fileRef.current?.click()} className="rounded border border-neutral-700 px-3 py-1.5 text-sm text-neutral-300 hover:bg-neutral-800">
-          Import
-        </button>
-        <button onClick={exportGraph} disabled={nodes.length === 0} className="rounded border border-neutral-700 px-3 py-1.5 text-sm text-neutral-300 hover:bg-neutral-800 disabled:opacity-40">
-          Export
-        </button>
-        <button onClick={clearAll} className="rounded border border-neutral-700 px-3 py-1.5 text-sm text-neutral-300 hover:bg-neutral-800">
-          Clear
-        </button>
-        <span className="ml-auto text-xs text-neutral-500">Right-click to add · drag-drop a .tcnet.json to load</span>
+        <button onClick={() => fileRef.current?.click()} className="tc-btn px-3 py-1.5 text-sm">Import</button>
+        <button onClick={exportGraph} disabled={nodes.length === 0} className="tc-btn px-3 py-1.5 text-sm">Export</button>
+        <button onClick={clearAll} className="tc-btn px-3 py-1.5 text-sm">Clear</button>
       </div>
 
-      <div className="flex min-h-0 flex-1">
-        <div
-          ref={paneRef}
-          className="relative min-h-0 flex-1"
-          onDragOver={(e) => {
-            if (e.dataTransfer.types.includes("Files")) e.preventDefault();
+      <span className="pointer-events-none absolute right-[22rem] top-6 z-20 mr-4 hidden text-xs text-[var(--faint)] xl:block">
+        Right-click to add · drag-drop a .tcnet.json
+      </span>
+
+      {/* ── floating bottom toolbar ── */}
+      <div className="tc-glass absolute bottom-4 left-1/2 z-20 flex -translate-x-1/2 items-center gap-1 rounded-2xl p-1.5">
+        <button
+          className={tbBtn + " font-medium text-[var(--text)]"}
+          onClick={(e) => {
+            const r = e.currentTarget.getBoundingClientRect();
+            setAddMenu({ x: r.left, y: Math.max(8, r.top - 320) });
           }}
-          onDrop={(e) => {
-            if (e.dataTransfer.files?.[0]) {
-              e.preventDefault();
-              importFile(e.dataTransfer.files[0]);
-            }
-          }}
+          title="Add a node"
         >
-          <ReactFlow
-            nodes={nodes}
-            edges={renderEdges}
-            onNodesChange={onNodesChange}
-            onEdgesChange={onEdgesChange}
-            onConnect={connect}
-            onNodeDragStart={() => recordNow()}
-            onEdgeClick={(_, edge) => setSelEdge(edge.id.split("::")[0])}
-            onNodeClick={() => setSelEdge(null)}
-            onPaneClick={() => setSelEdge(null)}
-            onPaneContextMenu={onPaneContextMenu}
-            nodeTypes={nodeTypes}
-            deleteKeyCode={null}
-            fitView
-            proOptions={{ hideAttribution: true }}
-          >
-            <Background />
-            <Controls />
-            <MiniMap pannable zoomable className="!bg-neutral-800" />
-          </ReactFlow>
+          <span className="text-[var(--accent)]">＋</span> Add
+        </button>
+        <div className="mx-1 h-5 w-px bg-[var(--stroke)]" />
+        <button className={tbBtn} onClick={doDelete} title="Delete selection (⌫)">Delete</button>
+        <button className={tbBtn} onClick={undo} disabled={past.length === 0} title="Undo (⌘Z)">↶</button>
+        <button className={tbBtn} onClick={redo} disabled={future.length === 0} title="Redo (⌘⇧Z)">↷</button>
+        <div className="mx-1 h-5 w-px bg-[var(--stroke)]" />
+        <button className={tbBtn} onClick={saveNow} title="Save (⌘S)">
+          {justSaved ? <span className="text-[var(--emerald)]">Saved ✓</span> : "Save"}
+        </button>
+      </div>
 
-          {/* Floating canvas toolbar */}
-          <div className="absolute bottom-4 left-1/2 z-20 flex -translate-x-1/2 items-center gap-1 rounded-xl border border-neutral-700/80 bg-neutral-900/90 p-1.5 shadow-2xl backdrop-blur">
-            <button
-              className={tbBtn + " font-medium text-neutral-100"}
-              onClick={(e) => {
-                const r = e.currentTarget.getBoundingClientRect();
-                setAddMenu({ x: r.left, y: Math.max(8, r.top - 320) });
-              }}
-              title="Add a node"
-            >
-              <span className="text-sky-400">＋</span> Add
-            </button>
-            <div className="mx-1 h-5 w-px bg-neutral-700" />
-            <button className={tbBtn} onClick={doDelete} title="Delete selection (⌫)">
-              Delete
-            </button>
-            <button className={tbBtn} onClick={undo} disabled={past.length === 0} title="Undo (⌘Z)">
-              ↶
-            </button>
-            <button className={tbBtn} onClick={redo} disabled={future.length === 0} title="Redo (⌘⇧Z)">
-              ↷
-            </button>
-            <div className="mx-1 h-5 w-px bg-neutral-700" />
-            <button className={tbBtn} onClick={saveNow} title="Save (⌘S)">
-              {justSaved ? <span className="text-emerald-400">Saved ✓</span> : "Save"}
-            </button>
-          </div>
+      {notice && (
+        <div className="tc-glass absolute left-1/2 top-20 z-30 -translate-x-1/2 rounded-xl px-3 py-1.5 text-xs text-[var(--text)]">
+          {notice}
+        </div>
+      )}
 
-          {notice && (
-            <div className="absolute left-1/2 top-3 z-30 -translate-x-1/2 rounded-lg border border-neutral-700 bg-neutral-900/95 px-3 py-1.5 text-xs text-neutral-200 shadow-xl">
-              {notice}
+      {menu && <PaletteMenu x={menu.x} y={menu.y} onPick={onPickAt} onClose={() => setMenu(null)} />}
+      {addMenu && <PaletteMenu x={addMenu.x} y={addMenu.y} onPick={addAtCenter} onClose={() => setAddMenu(null)} />}
+
+      {result && (
+        <div className="tc-glass absolute bottom-4 left-4 z-20 max-w-md rounded-xl p-3 text-sm">
+          {result.kind === "success" ? (
+            <div>
+              <div className="font-semibold text-[var(--emerald)]">✓ Network compiled</div>
+              <div className="mt-1 text-[var(--muted)]">
+                <span className="font-mono text-[var(--faint)]">{result.data.model_id}</span>
+                {" · "}
+                {result.data.num_parameters.toLocaleString()} parameters
+              </div>
             </div>
-          )}
-
-          {menu && (
-            <PaletteMenu x={menu.x} y={menu.y} onPick={onPickAt} onClose={() => setMenu(null)} />
-          )}
-          {addMenu && (
-            <PaletteMenu x={addMenu.x} y={addMenu.y} onPick={addAtCenter} onClose={() => setAddMenu(null)} />
-          )}
-
-          {result && (
-            <div className="absolute bottom-3 left-3 max-w-md rounded-lg border border-neutral-700 bg-neutral-900/95 p-3 text-sm shadow-xl">
-              {result.kind === "success" ? (
-                <div>
-                  <div className="font-semibold text-emerald-400">✓ Network compiled</div>
-                  <div className="mt-1 text-neutral-300">
-                    <span className="font-mono text-neutral-400">{result.data.model_id}</span>
-                    {" · "}
-                    {result.data.num_parameters.toLocaleString()} parameters
-                  </div>
-                </div>
-              ) : (
-                <div>
-                  <div className="font-semibold text-red-400">
-                    ✗ {result.errors.length} problem{result.errors.length > 1 ? "s" : ""}
-                  </div>
-                  <ul className="mt-1 space-y-1">
-                    {result.errors.map((e, i) => (
-                      <li key={i}>
-                        <button
-                          disabled={!e.node_id}
-                          onClick={() => e.node_id && selectNode(e.node_id)}
-                          className="text-left text-red-300 enabled:hover:underline"
-                        >
-                          {e.node_id && <span className="font-mono text-[11px] text-red-400">[{e.node_id}] </span>}
-                          {e.message}
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
+          ) : (
+            <div>
+              <div className="font-semibold text-red-400">
+                ✗ {result.errors.length} problem{result.errors.length > 1 ? "s" : ""}
+              </div>
+              <ul className="mt-1 space-y-1">
+                {result.errors.map((e, i) => (
+                  <li key={i}>
+                    <button
+                      disabled={!e.node_id}
+                      onClick={() => e.node_id && selectNode(e.node_id)}
+                      className="text-left text-red-300 enabled:hover:underline"
+                    >
+                      {e.node_id && <span className="font-mono text-[11px] text-red-400">[{e.node_id}] </span>}
+                      {e.message}
+                    </button>
+                  </li>
+                ))}
+              </ul>
             </div>
           )}
         </div>
+      )}
 
-        <aside className="w-80 shrink-0 border-l border-neutral-800 bg-neutral-950">
-          <NodeInspector node={selectedNode} onChange={updateNodeData} onDelete={deleteNode} />
-        </aside>
-      </div>
+      {/* ── floating inspector ── */}
+      <aside className="tc-panel absolute bottom-4 right-4 top-4 z-20 w-80 overflow-auto">
+        <NodeInspector node={selectedNode} onChange={updateNodeData} onDelete={deleteNode} />
+      </aside>
     </div>
   );
 }

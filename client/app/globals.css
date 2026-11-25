@@ -10,16 +10,164 @@
 @theme inline {
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  /* expose the runtime accent so bg-accent / text-accent / ring-accent / border-accent work */
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
 }
 
-html,
-body {
-  height: 100%;
+/* ============================================================================
+   Liquid-glass design tokens. The accent family is driven by [data-palette]
+   (set on <html>); the semantic data-viz colors are FIXED (they carry meaning).
+   ========================================================================== */
+:root {
+  /* default palette = Platinum */
+  --accent: #e8edf6;
+  --accent-hi: #f4f7fc;
+  --accent-lo: #c6cedb;
+  --accent-2: #cbd3e0;
+  --accent-soft: rgba(255, 255, 255, 0.14);
+  --accent-glow: rgba(255, 255, 255, 0.3);
+  --on-accent: #0b0b0e;
+
+  --grad-accent: linear-gradient(160deg, var(--accent-hi), var(--accent-lo));
+  --grad-neuron: radial-gradient(circle at 35% 30%, color-mix(in srgb, var(--accent-hi) 92%, #fff), color-mix(in srgb, var(--accent-lo) 62%, transparent));
+
+  /* glass surfaces */
+  --glass: rgba(255, 255, 255, 0.055);
+  --glass-strong: rgba(255, 255, 255, 0.09);
+  --glass-hover: rgba(255, 255, 255, 0.12);
+  --stroke: rgba(255, 255, 255, 0.12);
+  --stroke-strong: rgba(255, 255, 255, 0.2);
+  --inner-hi: rgba(255, 255, 255, 0.08);
+  --radius: 20px;
+  --radius-sm: 13px;
+  --radius-xs: 9px;
+  --shadow: 0 10px 40px -8px rgba(0, 0, 0, 0.6);
+  --shadow-lg: 0 24px 70px -12px rgba(0, 0, 0, 0.7);
+  --blur: 22px;
+
+  /* text */
+  --text: #e8edf6;
+  --muted: #93a0b8;
+  --faint: #5a647a;
+
+  /* fixed semantic data-viz colors (DO NOT theme — they encode meaning) */
+  --sky: #38bdf8;      /* weights */
+  --violet: #a78bfa;   /* activation / playback */
+  --emerald: #34d399;  /* accuracy / correct */
+  --amber: #f59e0b;    /* bias / negative */
 }
+
+[data-palette="platinum"] {
+  --accent: #e8edf6; --accent-hi: #f4f7fc; --accent-lo: #c6cedb; --accent-2: #cbd3e0;
+  --accent-soft: rgba(255,255,255,.14); --accent-glow: rgba(255,255,255,.3); --on-accent: #0b0b0e;
+}
+[data-palette="violet"] {
+  --accent: #7c6cff; --accent-hi: #9b8cff; --accent-lo: #6d28d9; --accent-2: #a78bfa;
+  --accent-soft: rgba(124,92,246,.18); --accent-glow: rgba(124,92,246,.5); --on-accent: #ffffff;
+}
+[data-palette="blue"] {
+  --accent: #3b82f6; --accent-hi: #4f8cff; --accent-lo: #2563eb; --accent-2: #60a5fa;
+  --accent-soft: rgba(59,130,246,.16); --accent-glow: rgba(59,130,246,.45); --on-accent: #ffffff;
+}
+[data-palette="teal"] {
+  --accent: #2dd4bf; --accent-hi: #4fe3c8; --accent-lo: #0d9488; --accent-2: #5eead4;
+  --accent-soft: rgba(45,212,191,.16); --accent-glow: rgba(45,212,191,.5); --on-accent: #04231a;
+}
+[data-palette="ember"] {
+  --accent: #f97316; --accent-hi: #fdba74; --accent-lo: #ea580c; --accent-2: #fdba74;
+  --accent-soft: rgba(249,115,22,.16); --accent-glow: rgba(249,115,22,.5); --on-accent: #1a0d00;
+}
+[data-palette="fuchsia"] {
+  --accent: #d946ef; --accent-hi: #f0abfc; --accent-lo: #c026d3; --accent-2: #e879f9;
+  --accent-soft: rgba(217,70,239,.16); --accent-glow: rgba(217,70,239,.5); --on-accent: #ffffff;
+}
+
+html, body { height: 100%; }
 
 body {
   font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
-  /* The studio UI sets its own (dark) surfaces; this is just a safe base. */
-  background: #0a0a0a;
-  color: #ededed;
+  color: var(--text);
+  background: #050506;
+  /* pure black with a soft neutral gradient + faint starfield — no color tint */
+  background-image:
+    radial-gradient(1000px 680px at 22% -5%, rgba(255, 255, 255, 0.05), transparent 60%),
+    radial-gradient(1100px 760px at 95% 8%, rgba(255, 255, 255, 0.03), transparent 58%),
+    radial-gradient(900px 820px at 78% 112%, rgba(255, 255, 255, 0.025), transparent 62%),
+    radial-gradient(circle at 20% 30%, rgba(255,255,255,0.02) 0 1px, transparent 1px),
+    radial-gradient(circle at 70% 60%, rgba(255,255,255,0.016) 0 1px, transparent 1px);
+  background-size: auto, auto, auto, 46px 46px, 62px 62px;
+  background-attachment: fixed;
 }
+
+/* ── Reusable glass components ─────────────────────────────────────────────── */
+/* Frosted + OPAQUE enough to occlude canvas content behind it (a dark translucent
+   base under a faint white sheen), so panels don't bleed the nodes behind them. */
+.tc-glass {
+  background-color: rgba(13, 13, 17, 0.74);
+  background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.02));
+  backdrop-filter: blur(var(--blur)) saturate(160%);
+  -webkit-backdrop-filter: blur(var(--blur)) saturate(160%);
+  border: 1px solid var(--stroke-strong);
+  box-shadow: var(--shadow), inset 0 1px 0 var(--inner-hi);
+}
+.tc-panel {
+  background-color: rgba(13, 13, 17, 0.74);
+  background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.02));
+  backdrop-filter: blur(var(--blur)) saturate(160%);
+  -webkit-backdrop-filter: blur(var(--blur)) saturate(160%);
+  border: 1px solid var(--stroke-strong);
+  box-shadow: var(--shadow), inset 0 1px 0 var(--inner-hi);
+  border-radius: var(--radius);
+}
+/* Immersive canvas depth — a soft neutral glow behind the nodes (matches mockups). */
+.tc-stage {
+  background:
+    radial-gradient(900px 620px at 40% 42%, rgba(255, 255, 255, 0.055), transparent 66%),
+    radial-gradient(640px 540px at 72% 70%, rgba(255, 255, 255, 0.03), transparent 72%);
+}
+.tc-btn {
+  display: inline-flex; align-items: center; gap: 7px;
+  border-radius: 11px; font-weight: 500; color: var(--text); cursor: pointer;
+  background: var(--glass); border: 1px solid var(--stroke);
+  backdrop-filter: blur(12px); transition: .18s;
+}
+.tc-btn:hover { background: var(--glass-hover); border-color: var(--stroke-strong); }
+.tc-btn:disabled { opacity: .35; cursor: default; }
+.tc-btn-primary {
+  color: var(--on-accent); border: none; cursor: pointer; font-weight: 600;
+  background: var(--grad-accent);
+  box-shadow: 0 8px 22px -6px var(--accent-glow), inset 0 1px 0 rgba(255,255,255,.35);
+  transition: .18s;
+}
+.tc-btn-primary:hover { filter: brightness(1.08); }
+.tc-btn-primary:disabled { opacity: .4; filter: none; cursor: default; }
+.tc-field {
+  border-radius: var(--radius-xs);
+  background: rgba(0,0,0,.25); border: 1px solid var(--stroke); color: var(--text);
+  outline: none; transition: border-color .15s;
+}
+.tc-field:focus { border-color: var(--accent); }
+.tc-nav { display: flex; align-items: center; gap: 2px; padding: 5px; border-radius: 16px; }
+.tc-nav-item {
+  padding: 8px 16px; border-radius: 12px; font-size: 14px; font-weight: 500;
+  color: var(--muted); transition: .18s; cursor: pointer;
+}
+.tc-nav-item:hover { color: var(--text); }
+.tc-nav-item.active {
+  color: var(--on-accent); background: var(--grad-accent);
+  box-shadow: 0 6px 20px -6px var(--accent-glow), inset 0 1px 0 rgba(255,255,255,.35);
+}
+.tc-chip { border-radius: 8px; background: var(--glass-strong); border: 1px solid var(--stroke); color: var(--muted); }
+.tc-glow-sel { border-color: var(--accent) !important; box-shadow: var(--shadow-lg), 0 0 0 1px var(--accent-glow), inset 0 1px 0 var(--inner-hi) !important; }
+
+/* ── React Flow chrome → glass/dark to match ──────────────────────────────── */
+.react-flow__controls { box-shadow: var(--shadow); border-radius: 12px; overflow: hidden; border: 1px solid var(--stroke); }
+.react-flow__controls button {
+  background: var(--glass-strong); border-bottom: 1px solid var(--stroke);
+  color: var(--text); fill: var(--text);
+}
+.react-flow__controls button:hover { background: var(--glass-hover); }
+.react-flow__controls button path { fill: var(--text); }
+.react-flow__minimap { border-radius: 12px; border: 1px solid var(--stroke); overflow: hidden; background: rgba(10,10,12,.8) !important; }
+.react-flow__attribution { display: none; }
