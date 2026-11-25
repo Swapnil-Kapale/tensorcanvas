@@ -2,9 +2,10 @@
 
 import { useState } from "react";
 import { BuildCanvas } from "./build/BuildCanvas";
+import { TrainWorkspace } from "./train/TrainWorkspace";
 import { useGraph } from "@/lib/store";
 
-const WORKSPACES = ["Build", "Observe", "Explore", "Intervene", "Properties"] as const;
+const WORKSPACES = ["Build", "Train", "Observe", "Explore", "Intervene", "Properties"] as const;
 type Workspace = (typeof WORKSPACES)[number];
 
 function Properties() {
@@ -38,7 +39,7 @@ function Properties() {
 
 export function WorkspaceShell() {
   const [active, setActive] = useState<Workspace>("Build");
-  const enabled = (w: Workspace) => w === "Build" || w === "Properties";
+  const enabled = (w: Workspace) => w === "Build" || w === "Train" || w === "Properties";
 
   return (
     <div className="flex h-full min-h-0 flex-col bg-neutral-950 text-neutral-100">
@@ -75,6 +76,8 @@ export function WorkspaceShell() {
       <main className="min-h-0 flex-1">
         {active === "Build" ? (
           <BuildCanvas />
+        ) : active === "Train" ? (
+          <TrainWorkspace />
         ) : active === "Properties" ? (
           <Properties />
         ) : (
