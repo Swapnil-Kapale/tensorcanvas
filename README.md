@@ -18,6 +18,18 @@ editing weights live to see how behaviour changes. All in the browser.
 
 ---
 
+## Screenshots
+
+| Build — visual network canvas | Observe — forward-pass + predictions |
+|:---:|:---:|
+| ![Build](docs/screenshots/build.png) | ![Observe](docs/screenshots/observe.png) |
+
+![Train](docs/screenshots/train.png)
+
+> 📊 **Presentation:** a one-page slide deck is at [`docs/presentation.html`](docs/presentation.html) — open it in a browser.
+
+---
+
 ## What you can do
 
 - **Build** — draw networks node by node (Input, Dense, Conv2D, MaxPool2D,
