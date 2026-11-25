@@ -17,6 +17,7 @@ export interface DatasetInfo {
 export interface ModelIO {
   input_shape: number[];
   out_dim: number;
+  has_conv: boolean;
   builtins: { id: string; blurb: string }[];
 }
 

@@ -58,7 +58,7 @@ export function ObserveWorkspace() {
   return (
     <div className="flex h-full min-h-0">
       <aside className="flex w-80 shrink-0 flex-col overflow-hidden border-r border-neutral-800 bg-neutral-900/30">
-        <InputPicker modelId={modelId} inputShape={modelIO?.input_shape ?? [2]} />
+        <InputPicker modelId={modelId} inputShape={modelIO?.input_shape ?? [2]} hasConv={modelIO?.has_conv ?? false} />
         <SnapshotBrowser modelId={modelId} />
       </aside>
 

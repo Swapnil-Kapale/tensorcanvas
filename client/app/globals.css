@@ -1,5 +1,12 @@
 @import "tailwindcss";
 
+/* Always scan our source dirs for class names, even if a .gitignore pattern would
+   otherwise exclude one. Tailwind v4 skips git-ignored paths by default, and a
+   stray `build/` ignore once hid components/build — dropping its z-index
+   utilities so overlays fell behind the canvas. @source makes scanning explicit. */
+@source "../components";
+@source "../lib";
+
 @theme inline {
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);

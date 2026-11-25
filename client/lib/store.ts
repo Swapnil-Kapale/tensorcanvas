@@ -20,6 +20,18 @@ interface Snapshot {
 const STORAGE_KEY = "tensorcanvas:graph";
 const HISTORY_LIMIT = 100;
 
+// Largest numeric suffix among node ids (e.g. "dense-5" → 5), 0 if none. Used to
+// keep generated ids from colliding with loaded graphs (examples use fixed ids
+// like "input-1", so a freshly-added node must start past them).
+function maxSuffix(nodes: { id: string }[]): number {
+  let m = 0;
+  for (const n of nodes) {
+    const r = /-(\d+)$/.exec(n.id);
+    if (r) m = Math.max(m, Number(r[1]));
+  }
+  return m;
+}
+
 // Push the current graph onto the undo stack and clear redo.
 function pushHistory(s: { past: Snapshot[]; nodes: TCNode[]; edges: LogicalEdge[] }) {
   return {
@@ -122,12 +134,17 @@ export const useGraph = create<GraphState>((set, get) => ({
 
   addNode: (type, pos, preset) =>
     set((s) => {
-      const id = `${type}-${s.nextId}`;
+      // Collision-proof id: start past both nextId and any suffix already in the
+      // graph (loaded examples/imports use fixed ids), then skip any still in use.
+      const used = new Set(s.nodes.map((n) => n.id));
+      let k = Math.max(s.nextId, maxSuffix(s.nodes) + 1);
+      while (used.has(`${type}-${k}`)) k += 1;
+      const id = `${type}-${k}`;
       const node: TCNode = { id, type: "tcNode", position: pos, data: defaultDataFor(type, preset), selected: true };
       return {
         ...pushHistory(s),
         nodes: [...s.nodes.map((n) => ({ ...n, selected: false })), node],
-        nextId: s.nextId + 1,
+        nextId: k + 1,
       };
     }),
 
@@ -181,7 +198,8 @@ export const useGraph = create<GraphState>((set, get) => ({
   setThreshold: (n) => set({ renderThreshold: n }),
   setModelName: (s) => set({ modelName: s }),
 
-  replaceGraph: (nodes, edges) => set((s) => ({ ...pushHistory(s), nodes, edges })),
+  replaceGraph: (nodes, edges) =>
+    set((s) => ({ ...pushHistory(s), nodes, edges, nextId: Math.max(s.nextId, maxSuffix(nodes) + 1) })),
 
   recordNow: () => set((s) => pushHistory(s)),
 
@@ -236,7 +254,7 @@ export const useGraph = create<GraphState>((set, get) => ({
         edges: d.edges ?? [],
         modelName: d.modelName ?? "untitled",
         renderThreshold: d.renderThreshold ?? 5,
-        nextId: d.nextId ?? 1,
+        nextId: Math.max(d.nextId ?? 1, maxSuffix(d.nodes ?? []) + 1),
       });
     } catch {
       /* ignore corrupt storage */
