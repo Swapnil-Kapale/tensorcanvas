@@ -1,0 +1,36 @@
+{
+  "format": "tensorcanvas-net",
+  "version": 1,
+  "name": "AlexNet",
+  "nodes": [
+    { "id": "input", "type": "input", "position": { "x": 0, "y": 200 }, "params": { "shape": "3, 224, 224" } },
+    { "id": "conv1", "type": "conv2d", "position": { "x": 170, "y": 120 }, "params": { "out_channels": "64", "kernel_size": "11", "stride": "4", "padding": "2" }, "activation": "relu" },
+    { "id": "pool1", "type": "maxpool2d", "position": { "x": 340, "y": 280 }, "params": { "kernel_size": "3", "stride": "2" } },
+    { "id": "conv2", "type": "conv2d", "position": { "x": 510, "y": 120 }, "params": { "out_channels": "192", "kernel_size": "5", "stride": "1", "padding": "2" }, "activation": "relu" },
+    { "id": "pool2", "type": "maxpool2d", "position": { "x": 680, "y": 280 }, "params": { "kernel_size": "3", "stride": "2" } },
+    { "id": "conv3", "type": "conv2d", "position": { "x": 850, "y": 120 }, "params": { "out_channels": "384", "kernel_size": "3", "stride": "1", "padding": "1" }, "activation": "relu" },
+    { "id": "conv4", "type": "conv2d", "position": { "x": 1020, "y": 120 }, "params": { "out_channels": "256", "kernel_size": "3", "stride": "1", "padding": "1" }, "activation": "relu" },
+    { "id": "conv5", "type": "conv2d", "position": { "x": 1190, "y": 120 }, "params": { "out_channels": "256", "kernel_size": "3", "stride": "1", "padding": "1" }, "activation": "relu" },
+    { "id": "pool3", "type": "maxpool2d", "position": { "x": 1360, "y": 280 }, "params": { "kernel_size": "3", "stride": "2" } },
+    { "id": "flatten", "type": "flatten", "position": { "x": 1530, "y": 340 }, "params": {} },
+    { "id": "fc6", "type": "linear", "position": { "x": 1700, "y": 120 }, "params": { "out_features": "4096" }, "activation": "relu" },
+    { "id": "fc7", "type": "linear", "position": { "x": 1870, "y": 120 }, "params": { "out_features": "4096" }, "activation": "relu" },
+    { "id": "fc8", "type": "linear", "position": { "x": 2040, "y": 120 }, "params": { "out_features": "1000" }, "activation": "none" },
+    { "id": "output", "type": "output", "position": { "x": 2210, "y": 200 }, "activation": "softmax" }
+  ],
+  "edges": [
+    { "source": "input", "target": "conv1" },
+    { "source": "conv1", "target": "pool1" },
+    { "source": "pool1", "target": "conv2" },
+    { "source": "conv2", "target": "pool2" },
+    { "source": "pool2", "target": "conv3" },
+    { "source": "conv3", "target": "conv4" },
+    { "source": "conv4", "target": "conv5" },
+    { "source": "conv5", "target": "pool3" },
+    { "source": "pool3", "target": "flatten" },
+    { "source": "flatten", "target": "fc6" },
+    { "source": "fc6", "target": "fc7" },
+    { "source": "fc7", "target": "fc8" },
+    { "source": "fc8", "target": "output" }
+  ]
+}

@@ -18,7 +18,6 @@ import "@xyflow/react/dist/style.css";
 import { buildModel, type BuildResult, type BuildSuccess } from "@/lib/api";
 import { canvasToSpec } from "@/lib/canvasToSpec";
 import {
-  defaultDataFor,
   isExpanded,
   neuronCount,
   type FlowNodeData,
@@ -28,6 +27,7 @@ import { FlowNode } from "./FlowNode";
 import { NodeInspector } from "./NodeInspector";
 import { PaletteMenu } from "./PaletteMenu";
 import { useGraph, type LogicalEdge, type TCNode } from "@/lib/store";
+import { EXAMPLES, fileToGraph, graphToFile } from "@/lib/examples";
 
 const nodeTypes: NodeTypes = { tcNode: FlowNode };
 
@@ -90,8 +90,11 @@ function BuildCanvasInner() {
   const [compiling, setCompiling] = useState(false);
   const [justSaved, setJustSaved] = useState(false);
   const [selEdge, setSelEdge] = useState<string | null>(null);
+  const [exMenu, setExMenu] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
   const { screenToFlowPosition, getNodes } = useReactFlow();
   const paneRef = useRef<HTMLDivElement>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
   const addOffset = useRef(0);
 
   // Load the saved graph once (store guards against clobbering on route return).
@@ -224,29 +227,41 @@ function BuildCanvasInner() {
     setCompiling(false);
   }, [nodes, edges, modelName, applyResult]);
 
-  const loadExample = useCallback(() => {
-    const mk = (id: string, type: string, x: number, y: number, patch?: Partial<FlowNodeData>): TCNode => ({
-      id,
-      type: "tcNode",
-      position: { x, y },
-      data: defaultDataFor(type, patch),
-      selected: false,
-    });
-    const ns = [
-      mk("input-1", "input", 0, 160),
-      mk("flatten-2", "flatten", 200, 180),
-      mk("linear-3", "linear", 380, 160, { params: { out_features: "128" }, activation: "relu" }),
-      mk("linear-4", "linear", 600, 160, { params: { out_features: "3" }, activation: "none" }),
-      mk("output-5", "output", 820, 180, { activation: "softmax" }),
-    ];
-    const es: LogicalEdge[] = ns.slice(0, -1).map((n, i) => ({
-      id: `le-${n.id}-${ns[i + 1].id}`,
-      source: n.id,
-      target: ns[i + 1].id,
-    }));
-    replaceGraph(ns, es);
-    setResult(null);
-  }, [replaceGraph]);
+  const loadGraph = useCallback(
+    (g: { nodes: TCNode[]; edges: LogicalEdge[] }, label?: string) => {
+      replaceGraph(g.nodes, g.edges);
+      setResult(null);
+      setExMenu(false);
+      if (label) {
+        setNotice(label);
+        window.setTimeout(() => setNotice(null), 2500);
+      }
+    },
+    [replaceGraph],
+  );
+
+  const exportGraph = useCallback(() => {
+    const file = graphToFile(nodes, edges, modelName || "network");
+    const blob = new Blob([JSON.stringify(file, null, 2)], { type: "application/json" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `${(modelName || "network").replace(/\s+/g, "-")}.tcnet.json`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }, [nodes, edges, modelName]);
+
+  const importFile = useCallback(
+    async (file: File) => {
+      try {
+        const g = fileToGraph(JSON.parse(await file.text()));
+        loadGraph(g, `Loaded ${file.name}`);
+      } catch (e) {
+        setNotice(e instanceof Error ? e.message : "Could not import file");
+        window.setTimeout(() => setNotice(null), 3500);
+      }
+    },
+    [loadGraph],
+  );
 
   const tbBtn =
     "flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-sm text-neutral-300 transition hover:bg-neutral-800 disabled:opacity-30 disabled:hover:bg-transparent";
@@ -267,17 +282,68 @@ function BuildCanvasInner() {
         >
           {compiling ? "Compiling…" : "Compile"}
         </button>
-        <button onClick={loadExample} className="rounded border border-neutral-700 px-3 py-1.5 text-sm text-neutral-300 hover:bg-neutral-800">
-          Load example
+        <div className="relative">
+          <button
+            onClick={() => setExMenu((v) => !v)}
+            className="rounded border border-neutral-700 px-3 py-1.5 text-sm text-neutral-300 hover:bg-neutral-800"
+          >
+            Load example ▾
+          </button>
+          {exMenu && (
+            <div
+              className="absolute left-0 top-full z-30 mt-1 w-56 overflow-hidden rounded-lg border border-neutral-700 bg-neutral-900 py-1 shadow-2xl"
+              onMouseLeave={() => setExMenu(false)}
+            >
+              {EXAMPLES.map((grp) => (
+                <div key={grp.group} className="py-0.5">
+                  <div className="px-3 pt-1 text-[10px] font-semibold uppercase tracking-wide text-neutral-600">{grp.group}</div>
+                  {grp.items.map((it) => (
+                    <button
+                      key={it.id}
+                      onClick={() => loadGraph(it.make(), `Loaded ${it.label}`)}
+                      className="block w-full px-3 py-1.5 text-left text-sm text-neutral-200 hover:bg-neutral-700/70"
+                    >
+                      {it.label}
+                    </button>
+                  ))}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+        <input
+          ref={fileRef}
+          type="file"
+          accept=".json,.tcnet,.tcnet.json"
+          className="hidden"
+          onChange={(e) => e.target.files?.[0] && importFile(e.target.files[0])}
+        />
+        <button onClick={() => fileRef.current?.click()} className="rounded border border-neutral-700 px-3 py-1.5 text-sm text-neutral-300 hover:bg-neutral-800">
+          Import
+        </button>
+        <button onClick={exportGraph} disabled={nodes.length === 0} className="rounded border border-neutral-700 px-3 py-1.5 text-sm text-neutral-300 hover:bg-neutral-800 disabled:opacity-40">
+          Export
         </button>
         <button onClick={clearAll} className="rounded border border-neutral-700 px-3 py-1.5 text-sm text-neutral-300 hover:bg-neutral-800">
           Clear
         </button>
-        <span className="ml-auto text-xs text-neutral-500">Right-click the canvas to add a node</span>
+        <span className="ml-auto text-xs text-neutral-500">Right-click to add · drag-drop a .tcnet.json to load</span>
       </div>
 
       <div className="flex min-h-0 flex-1">
-        <div ref={paneRef} className="relative min-h-0 flex-1">
+        <div
+          ref={paneRef}
+          className="relative min-h-0 flex-1"
+          onDragOver={(e) => {
+            if (e.dataTransfer.types.includes("Files")) e.preventDefault();
+          }}
+          onDrop={(e) => {
+            if (e.dataTransfer.files?.[0]) {
+              e.preventDefault();
+              importFile(e.dataTransfer.files[0]);
+            }
+          }}
+        >
           <ReactFlow
             nodes={nodes}
             edges={renderEdges}
@@ -326,6 +392,12 @@ function BuildCanvasInner() {
               {justSaved ? <span className="text-emerald-400">Saved ✓</span> : "Save"}
             </button>
           </div>
+
+          {notice && (
+            <div className="absolute left-1/2 top-3 z-30 -translate-x-1/2 rounded-lg border border-neutral-700 bg-neutral-900/95 px-3 py-1.5 text-xs text-neutral-200 shadow-xl">
+              {notice}
+            </div>
+          )}
 
           {menu && (
             <PaletteMenu x={menu.x} y={menu.y} onPick={onPickAt} onClose={() => setMenu(null)} />

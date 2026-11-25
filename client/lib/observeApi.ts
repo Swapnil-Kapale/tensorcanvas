@@ -5,6 +5,7 @@ import { API_BASE } from "@/lib/api";
 export type RunInput =
   | { kind: "vector"; values: number[] }
   | { kind: "dataset"; dataset_id: string; index: number }
+  | { kind: "image"; data: string }
   | { kind: "random"; seed: number };
 
 export interface NodeRec {
@@ -24,6 +25,7 @@ export interface Prediction {
   confidence?: number;
   scalar?: number[];
   target?: number | number[] | null;
+  topk?: { index: number; prob: number; label: string | null }[];
 }
 
 export interface ObserveSnapshot {
@@ -94,6 +96,16 @@ export async function patchNodeWeights(
       method: "PATCH",
       headers: { "content-type": "application/json" },
       body: JSON.stringify(edit),
+    }),
+  );
+}
+
+export async function loadPretrained(modelId: string, arch = "alexnet"): Promise<{ ok: boolean; classes: number }> {
+  return jsonOrThrow(
+    await fetch(`${API_BASE}/api/v1/models/${modelId}/weights/pretrained`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ arch }),
     }),
   );
 }

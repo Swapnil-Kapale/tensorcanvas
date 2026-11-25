@@ -3,6 +3,8 @@ into a bounded snapshot (for visualization + analysis), and store snapshots."""
 
 from __future__ import annotations
 
+import base64
+import io
 import threading
 import uuid
 from collections import deque
@@ -10,8 +12,10 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Optional
 
+import numpy as np
 import torch
 import torch.nn.functional as F
+from PIL import Image
 
 from .datasets import DatasetError, datasets, match_to_network
 from .training import terminal_activation
@@ -74,7 +78,7 @@ def _shape_node(t: torch.Tensor) -> dict:
     return rec
 
 
-def _predict(out: torch.Tensor, built, target) -> dict:
+def _predict(out: torch.Tensor, built, target, labels=None) -> dict:
     term = terminal_activation(built)
     o = out.detach().reshape(-1)
     out_dim = int(o.numel())
@@ -83,9 +87,14 @@ def _predict(out: torch.Tensor, built, target) -> dict:
         return {"task": "classification", "pred_class": int(prob > 0.5),
                 "probs": [1 - prob, prob], "confidence": max(prob, 1 - prob), "target": target}
     probs = (o if term == "softmax" else torch.softmax(o, 0)).tolist()
-    pc = max(range(out_dim), key=lambda i: probs[i])
+    order = sorted(range(out_dim), key=lambda i: probs[i], reverse=True)
+    pc = order[0]
+    topk = [
+        {"index": i, "prob": probs[i], "label": labels[i] if labels and i < len(labels) else None}
+        for i in order[:5]
+    ]
     return {"task": "classification", "pred_class": int(pc), "probs": probs,
-            "confidence": float(probs[pc]), "target": target}
+            "confidence": float(probs[pc]), "target": target, "topk": topk}
 
 
 def _resolve_input(built, spec: dict, input_shape: tuple[int, ...], out_dim: int):
@@ -101,6 +110,16 @@ def _resolve_input(built, spec: dict, input_shape: tuple[int, ...], out_dim: int
     elif kind == "random":
         g = torch.Generator().manual_seed(int(spec.get("seed", 0)))
         x = torch.randn(1, *input_shape, generator=g)
+    elif kind == "image":
+        if len(input_shape) != 3:
+            raise DatasetError("image input needs a 3-D [C, H, W] network input")
+        c, h, w = input_shape
+        raw = base64.b64decode(str(spec.get("data", "")).split(",")[-1])
+        im = Image.open(io.BytesIO(raw)).convert("L" if c == 1 else "RGB").resize((w, h))
+        a = np.asarray(im, dtype=np.float32) / 255.0
+        a = a[None, :, :] if c == 1 else a.transpose(2, 0, 1)
+        x = torch.from_numpy(a).unsqueeze(0)
+        thumb = _downsample(x[0, 0], THUMB_HW)
     elif kind == "dataset":
         ds = datasets.get(spec.get("dataset_id", ""))
         if ds is None:
@@ -137,7 +156,7 @@ def run_model(rec, built, spec: dict) -> dict:
     if task == "regression":
         prediction = {"task": "regression", "scalar": out_t.reshape(-1).tolist(), "target": target}
     else:
-        prediction = _predict(out_t, built, target)
+        prediction = _predict(out_t, built, target, getattr(rec, "labels", None))
     return {
         "weight_version": rec.weight_version,
         "order": list(built.order),

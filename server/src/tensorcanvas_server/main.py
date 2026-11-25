@@ -393,3 +393,28 @@ def patch_weights(model_id: str, node_id: str, body: dict):
     rec.weight_version += 1
     return {"ok": True, "node_id": node_id, "weight_version": rec.weight_version,
             "weight_shape": [core.out_features, core.in_features]}
+
+
+@app.post("/api/v1/models/{model_id}/weights/pretrained", tags=["observe"])
+def load_pretrained(model_id: str, body: dict):
+    """Load real pretrained weights (torchvision) into the live model, in place.
+    First call downloads the weights (~233 MB for AlexNet) and may take a while."""
+    rec = registry.get(model_id)
+    if rec is None:
+        return JSONResponse(status_code=404, content={"detail": "model not found"})
+    if run_registry.active_for(model_id) is not None:
+        return JSONResponse(status_code=409, content={"detail": "stop the active training run first"})
+    arch = (body.get("arch") or "alexnet").lower()
+    if arch != "alexnet":
+        return JSONResponse(status_code=400, content={"detail": f"no pretrained weights for '{arch}' (only 'alexnet')"})
+    try:
+        from .pretrained import load_alexnet_into
+
+        cats = load_alexnet_into(rec.built, rec)
+    except ValueError as e:
+        return JSONResponse(status_code=422, content={"detail": str(e)})
+    except Exception as e:  # download/import failures
+        return JSONResponse(status_code=500, content={"detail": f"could not load pretrained weights: {e}"})
+    rec.labels = cats
+    rec.weight_version += 1
+    return {"ok": True, "arch": arch, "classes": len(cats), "weight_version": rec.weight_version}
