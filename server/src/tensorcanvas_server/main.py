@@ -228,9 +228,11 @@ def model_datasets(model_id: str):
         return JSONResponse(status_code=404, content={"detail": "model not found"})
     built = rec.built
     two_d = tuple(built.input_shape) == (2,)
+    has_conv = any(t == "conv2d" for t in built.node_types.values())
     return {
         "input_shape": list(built.input_shape),
         "out_dim": _out_dim(built),
+        "has_conv": has_conv,
         "builtins": [{"id": k, "blurb": v} for k, v in BUILTINS.items()] if two_d else [],
     }
 

@@ -8,16 +8,29 @@ import { listPretrained, loadPretrained } from "@/lib/observeApi";
 const parseVec = (t: string): number[] =>
   t.split(/[\s,]+/).map((s) => s.trim()).filter(Boolean).map(Number).filter((n) => !Number.isNaN(n));
 
-export function InputPicker({ modelId, inputShape }: { modelId: string; inputShape: number[] }) {
+export function InputPicker({
+  modelId,
+  inputShape,
+  hasConv,
+}: {
+  modelId: string;
+  inputShape: number[];
+  hasConv: boolean;
+}) {
   const run = useObserve((s) => s.run);
   const busy = useObserve((s) => s.busy);
   const dim = inputShape.reduce((a, b) => a * b, 1);
-  const isImage = inputShape.length === 3;          // [C, H, W] → image input
-  const isVector = inputShape.length === 1;         // [features] → numeric input
-  const bigVector = isVector && dim > 64;           // too many to show as a grid
+
+  // Input UI adapts to the network: a conv network (CNN) takes an image; a
+  // dense network (ANN) takes numeric values. Pretrained weights only apply to
+  // ImageNet-shaped conv nets (3×224×224) — don't offer them otherwise.
+  const showImage = hasConv;
+  const showNumeric = !hasConv;
+  const isImageNet = inputShape.length === 3 && inputShape[0] === 3 && inputShape[1] === 224 && inputShape[2] === 224;
+  const bigVector = showNumeric && dim > 64;
 
   const [vals, setVals] = useState<number[]>([]);
-  const [text, setText] = useState("");             // free-text entry for large vectors
+  const [text, setText] = useState("");
   const [datasetId, setDatasetId] = useState<string | null>(null);
   const [nSamples, setNSamples] = useState(0);
   const [index, setIndex] = useState(0);
@@ -27,13 +40,13 @@ export function InputPicker({ modelId, inputShape }: { modelId: string; inputSha
   const fileRef = useRef<HTMLInputElement>(null);
   const imgRef = useRef<HTMLInputElement>(null);
 
-  // Pretrained weights only make sense for image models.
+  // Pretrained archs only matter for ImageNet-shaped conv nets.
   useEffect(() => {
-    if (!isImage) return;
+    if (!isImageNet) return;
     let alive = true;
     listPretrained().then((a) => { if (alive && a.length) setArchs(a); }).catch(() => {});
     return () => { alive = false; };
-  }, [isImage]);
+  }, [isImageNet]);
 
   const onPretrained = async (arch: string) => {
     const name = arch.toUpperCase();
@@ -83,12 +96,17 @@ export function InputPicker({ modelId, inputShape }: { modelId: string; inputSha
 
   return (
     <div className="space-y-3 border-b border-neutral-800 p-4">
-      <div className="text-[11px] font-semibold uppercase tracking-wider text-neutral-500">
-        Input · [{inputShape.join(", ")}]
+      <div className="flex items-center justify-between">
+        <span className="text-[11px] font-semibold uppercase tracking-wider text-neutral-500">
+          Input · [{inputShape.join(", ")}]
+        </span>
+        <span className="rounded bg-neutral-800 px-1.5 py-0.5 text-[10px] text-neutral-400">
+          {showImage ? "image network" : "numeric network"}
+        </span>
       </div>
 
-      {/* ── Numeric entry for vector (1-D) networks ── */}
-      {isVector && (
+      {/* ── Numeric entry for dense / ANN networks ── */}
+      {showNumeric && (
         <>
           {bigVector ? (
             <>
@@ -145,20 +163,21 @@ export function InputPicker({ modelId, inputShape }: { modelId: string; inputSha
         </>
       )}
 
-      {/* ── Image entry for [C, H, W] networks ── */}
-      {isImage && (
+      {/* ── Image entry for conv / CNN networks ── */}
+      {showImage && (
         <>
-          {(archs.length ? archs : ["alexnet"]).map((arch) => (
-            <button
-              key={arch}
-              className={btn + " w-full border border-amber-500/50 text-amber-200 hover:bg-amber-500/10"}
-              disabled={busy}
-              onClick={() => onPretrained(arch)}
-            >
-              Load pretrained {arch.toUpperCase()} weights
-            </button>
-          ))}
-          {archs.length > 1 && (
+          {isImageNet &&
+            (archs.length ? archs : ["alexnet"]).map((arch) => (
+              <button
+                key={arch}
+                className={btn + " w-full border border-amber-500/50 text-amber-200 hover:bg-amber-500/10"}
+                disabled={busy}
+                onClick={() => onPretrained(arch)}
+              >
+                Load pretrained {arch.toUpperCase()} weights
+              </button>
+            ))}
+          {isImageNet && archs.length > 1 && (
             <div className="text-center text-[10px] text-neutral-600">pick the one matching your drawn network (load its example first)</div>
           )}
           {pre && <div className="rounded-lg border border-neutral-700 bg-neutral-800/50 p-2 text-[11px] text-neutral-300">{pre}</div>}
@@ -170,13 +189,13 @@ export function InputPicker({ modelId, inputShape }: { modelId: string; inputSha
         </>
       )}
 
-      {/* ── Dataset sampling + random — available for every input kind ── */}
+      {/* ── Dataset sampling + random — available for every network ── */}
       <div
         onClick={() => fileRef.current?.click()}
         className="cursor-pointer rounded-xl border-2 border-dashed border-neutral-700 p-3 text-center text-xs text-neutral-400 hover:border-neutral-600"
       >
         <input ref={fileRef} type="file" accept=".csv,.json,.npy,.npz,.zip" className="hidden" onChange={(e) => e.target.files?.[0] && onUpload(e.target.files[0])} />
-        {datasetId ? `dataset loaded · ${nSamples} samples` : isImage ? "or an image ZIP (class folders) to sample" : "or upload a dataset to sample an input"}
+        {datasetId ? `dataset loaded · ${nSamples} samples` : showImage ? "or an image ZIP (class folders) to sample" : "or upload a dataset to sample an input"}
       </div>
       {datasetId && (
         <>
