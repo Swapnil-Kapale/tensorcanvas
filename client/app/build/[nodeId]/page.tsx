@@ -1,12 +1,14 @@
 "use client";
 
 import { Suspense } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import { LayerEditor } from "@/components/build/edit/LayerEditor";
 
 function EditLayer() {
   const params = useParams<{ nodeId: string }>();
-  return <LayerEditor nodeId={params.nodeId} />;
+  const search = useSearchParams();
+  const mode = search.get("mode") === "live" ? "live" : "initial";
+  return <LayerEditor nodeId={params.nodeId} mode={mode} />;
 }
 
 export default function EditLayerPage() {

@@ -324,12 +324,16 @@ class GraphModule(nn.Module):
         self.input_id = input_id
         self.output_id = output_id
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
+    def forward_capture(self, x: torch.Tensor) -> dict[str, torch.Tensor]:
+        """Run the chain and return every node's output tensor (keyed by id)."""
         activations: dict[str, torch.Tensor] = {}
         for nid in self.order:
             src = x if self.pred[nid] is None else activations[self.pred[nid]]
             activations[nid] = self.layers[nid](src)
-        return activations[self.output_id]
+        return activations
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return self.forward_capture(x)[self.output_id]
 
 
 @dataclass

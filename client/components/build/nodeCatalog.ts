@@ -60,6 +60,9 @@ export interface FlowNodeData {
   hasBias?: boolean | null;
   // Live per-neuron glow intensity pushed during training (0..1 per neuron).
   activationMag?: number[] | null;
+  // Observe/run forward-pass state (set by the observe store during replay).
+  observePhase?: "idle" | "computing" | "done" | null;
+  observeValues?: number[] | null;
   // User-set initial values, sent on the next compile:
   initWeights?: number[][] | null;
   initBias?: number[] | null;
@@ -164,6 +167,8 @@ export function defaultDataFor(type: string, preset?: Partial<FlowNodeData>): Fl
     extra: entry?.custom ? [] : undefined,
     neuronActivations: null,
     activationMag: null,
+    observePhase: null,
+    observeValues: null,
     weights: null,
     biasValues: null,
     weightShape: null,

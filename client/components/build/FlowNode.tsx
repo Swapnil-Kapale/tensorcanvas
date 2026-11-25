@@ -75,20 +75,36 @@ export function FlowNode({ data, selected }: NodeProps<TCNode>) {
   // Expanded Dense: bare flat neurons, NO surrounding box.
   if (data.type === "linear" && isExpanded(data, threshold)) {
     const n = neuronCount(data) ?? 0;
+    const observing = data.observePhase != null && data.observePhase !== "idle";
+    const computing = data.observePhase === "computing";
+    const tone = observing ? "violet" : "sky";
     const mags = data.activationMag ?? neuronMagnitudes(data.weights);
     const height = COL_TOP + n * STRIDE + 20;
     return (
-      <div className="relative" style={{ width: 120, height }}>
+      <div
+        className={["relative rounded-lg", computing ? "ring-2 ring-violet-400 animate-pulse" : ""].join(" ")}
+        style={{ width: 120, height }}
+      >
         <div className={hasError ? "text-red-300" : undefined}>
           <Label data={data} />
         </div>
+        {computing && (
+          <span className="absolute right-0 top-0 rounded bg-violet-500/30 px-1 text-[9px] text-violet-100">
+            computing…
+          </span>
+        )}
         {Array.from({ length: n }).map((_, i) => (
           <div
             key={`c${i}`}
-            className="absolute left-1/2 -translate-x-1/2"
-            style={{ top: COL_TOP + i * STRIDE + (STRIDE - SPHERE) / 2 }}
+            className="absolute left-0 right-0 flex items-center justify-center"
+            style={{ top: COL_TOP + i * STRIDE + (STRIDE - SPHERE) / 2, height: SPHERE }}
           >
-            <NeuronSphere size={SPHERE} mag={mags?.[i] ?? null} selected={!!selected} />
+            <NeuronSphere size={SPHERE} mag={mags?.[i] ?? null} selected={!!selected} tone={tone} />
+            {observing && data.observeValues && data.observeValues[i] != null && (
+              <span className="absolute left-[62%] font-mono text-[9px] text-violet-200">
+                {data.observeValues[i].toFixed(2)}
+              </span>
+            )}
           </div>
         ))}
         <div style={{ position: "absolute", top: COL_TOP + n * STRIDE }}>
@@ -123,11 +139,15 @@ export function FlowNode({ data, selected }: NodeProps<TCNode>) {
   const showSource = data.type !== "output";
   const collapsedDense = data.type === "linear";
   const s = summary(data);
+  const observing = data.observePhase != null && data.observePhase !== "idle";
+  const computing = data.observePhase === "computing";
+  const tone = observing ? "violet" : "sky";
   const mags = data.activationMag ?? neuronMagnitudes(data.weights);
   const shellCls = [
     "relative rounded-lg border-2 bg-neutral-900/95 px-3 py-2 text-neutral-100 shadow-lg",
     "min-w-[140px] transition-colors",
-    hasError ? "border-red-500" : "border-neutral-600",
+    hasError ? "border-red-500" : computing ? "border-violet-400" : "border-neutral-600",
+    computing ? "animate-pulse" : "",
     selected ? "ring-2 ring-white/60" : "",
   ].join(" ");
 
@@ -141,7 +161,7 @@ export function FlowNode({ data, selected }: NodeProps<TCNode>) {
         <div className="mt-2 flex flex-col items-center gap-1">
           <div className="flex gap-1.5">
             {[0, 1, 2].map((i) => (
-              <NeuronSphere key={i} size={14} mag={mags?.[i] ?? null} />
+              <NeuronSphere key={i} size={14} mag={mags?.[i] ?? null} tone={tone} />
             ))}
           </div>
           <div className="text-center leading-tight">
