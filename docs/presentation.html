@@ -27,7 +27,7 @@
   .deck{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;padding:4vmin}
   .slide{
     position:absolute;inset:4vmin;display:none;flex-direction:column;justify-content:center;
-    padding:min(7vmin,80px);border-radius:28px;
+    padding:min(7vmin,80px);border-radius:28px;overflow:auto;
     background-color:rgba(13,13,17,.66);
     background-image:linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,.02));
     backdrop-filter:blur(26px) saturate(160%);-webkit-backdrop-filter:blur(26px) saturate(160%);
@@ -40,29 +40,33 @@
     background:linear-gradient(160deg,var(--a-hi),var(--a-lo));box-shadow:0 10px 30px -6px var(--glow),inset 0 1px 0 rgba(255,255,255,.4)}
   h1{font-size:min(8vmin,72px);font-weight:800;letter-spacing:-.03em;line-height:1.02}
   h1 .c{background:linear-gradient(120deg,#8fbaff,#4f8cff);-webkit-background-clip:text;background-clip:text;color:transparent}
-  h2{font-size:min(5vmin,40px);font-weight:700;letter-spacing:-.02em;margin-bottom:4px}
+  h2{font-size:min(5vmin,40px);font-weight:700;letter-spacing:-.02em;margin-bottom:4px;line-height:1.1}
   .kicker{font-size:13px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--a-hi);margin-bottom:14px}
-  .lead{font-size:min(3vmin,22px);color:var(--muted);line-height:1.55;max-width:60ch}
+  .lead{font-size:min(2.9vmin,21px);color:var(--muted);line-height:1.55;max-width:64ch}
+  .lead b,.lead strong{color:var(--text)}
   .tagline{font-size:min(3.4vmin,26px);font-weight:600;color:var(--text);margin-top:6px}
-  ul{list-style:none;display:flex;flex-direction:column;gap:14px;margin-top:22px}
-  li{display:flex;gap:14px;align-items:flex-start;font-size:min(2.5vmin,19px);line-height:1.4}
-  li .dot{width:10px;height:10px;border-radius:50%;flex:none;margin-top:7px;box-shadow:0 0 10px currentColor}
-  li b{font-weight:600}
-  li span.d{color:var(--muted)}
-  .grid2{display:grid;grid-template-columns:1.1fr .9fr;gap:40px;align-items:center}
+  .callout{margin-top:22px;padding:20px 22px;border-radius:16px;border:1px solid var(--glass-stroke);
+    background:linear-gradient(160deg,rgba(255,217,122,.08),rgba(255,255,255,.02));border-left:3px solid var(--amber)}
+  .callout .q{font-size:min(2.7vmin,20px);color:var(--text);line-height:1.5}
+  .cite{margin-top:12px;font-size:13px;color:var(--faint);font-family:"JetBrains Mono",monospace}
+  .cite a{color:var(--a-hi);text-decoration:none}
+  ul{list-style:none;display:flex;flex-direction:column;gap:13px;margin-top:20px}
+  li{display:flex;gap:13px;align-items:flex-start;font-size:min(2.4vmin,18px);line-height:1.4}
+  li .dot{width:10px;height:10px;border-radius:50%;flex:none;margin-top:6px;box-shadow:0 0 10px currentColor}
+  li b{font-weight:600} li span.d{color:var(--muted)}
+  .grid2{display:grid;grid-template-columns:1.05fr .95fr;gap:40px;align-items:center}
   .shot{border-radius:16px;border:1px solid var(--glass-stroke);overflow:hidden;box-shadow:0 24px 60px -16px rgba(0,0,0,.7);width:100%}
   .shot img{display:block;width:100%}
-  .chips{display:flex;flex-wrap:wrap;gap:10px;margin-top:26px}
+  .chips{display:flex;flex-wrap:wrap;gap:10px;margin-top:22px}
   .chip{padding:7px 14px;border-radius:11px;font-size:14px;color:var(--muted);background:rgba(255,255,255,.05);border:1px solid var(--glass-stroke)}
-  .pipe{display:flex;align-items:center;gap:14px;margin-top:26px;flex-wrap:wrap}
-  .stage{padding:12px 20px;border-radius:14px;font-weight:600;background:rgba(255,255,255,.05);border:1px solid var(--glass-stroke)}
-  .arrow{color:var(--a-hi);font-size:22px}
-  .authors{margin-top:30px;display:flex;gap:26px;color:var(--muted);font-size:min(2.3vmin,17px)}
+  .pipe{display:flex;align-items:center;gap:12px;margin-top:22px;flex-wrap:wrap}
+  .stage{padding:11px 18px;border-radius:14px;font-weight:600;background:rgba(255,255,255,.05);border:1px solid var(--glass-stroke)}
+  .arrow{color:var(--a-hi);font-size:20px}
+  .authors{margin-top:28px;display:flex;gap:26px;color:var(--muted);font-size:min(2.2vmin,17px)}
   .authors b{color:var(--text)}
-  .foot{position:absolute;left:min(7vmin,80px);bottom:min(5vmin,52px);color:var(--faint);font-size:13px;font-family:"JetBrains Mono",monospace}
+  .foot{position:absolute;left:min(7vmin,80px);bottom:min(4.5vmin,48px);color:var(--faint);font-size:13px;font-family:"JetBrains Mono",monospace}
   .arch{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:20px;font-size:min(2.3vmin,18px)}
   .box{padding:12px 18px;border-radius:12px;background:rgba(255,255,255,.05);border:1px solid var(--glass-stroke);font-weight:600}
-  /* nav */
   .nav{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);display:flex;align-items:center;gap:14px;z-index:20}
   .dots{display:flex;gap:9px}
   .dots i{width:9px;height:9px;border-radius:50%;background:rgba(255,255,255,.22);cursor:pointer;transition:.2s}
@@ -74,42 +78,52 @@
 </style>
 </head>
 <body>
-  <div class="count"><span id="cur">1</span> / 4</div>
+  <div class="count"><span id="cur">1</span> / 5</div>
   <div class="deck" id="deck">
 
-    <!-- 1 — Title -->
+    <!-- 1 — Product & problem -->
     <section class="slide active">
+      <div class="kicker">The product · the problem</div>
       <div class="brand">V</div>
-      <h1 style="margin-top:22px">Tensor<span class="c">Canvas</span></h1>
+      <h1 style="margin-top:18px">Tensor<span class="c">Canvas</span></h1>
       <div class="tagline">Explore. Understand. Intervene.</div>
-      <p class="lead" style="margin-top:16px">A visual studio that makes the inner workings of neural networks understandable and experimentally accessible — build, train, watch the forward pass, and reach in to change weights, all in the browser.</p>
+      <p class="lead" style="margin-top:18px"><b>The problem:</b> a neural network is a black box. You get to see its <i>architecture</i>, or its final <i>accuracy</i> — but almost never <b>what actually happens inside it</b> as it computes, and you can't easily reach in and change it.</p>
+      <p class="lead" style="margin-top:14px"><b>What we built:</b> a visual studio where you draw a network, compile it to real PyTorch, train it, then <b>watch the forward pass neuron-by-neuron and edit the weights live</b> to see how behaviour changes — all in the browser.</p>
       <div class="authors">
         <span>👤 <b>Swapnil Kapale</b></span>
         <span>👤 <b>Aryan Tandon</b></span>
-        <span>· Academic project · Apache-2.0</span>
       </div>
-      <div class="foot">Next.js · FastAPI · PyTorch</div>
+      <div class="foot">A visual neural-network exploration &amp; intervention studio</div>
     </section>
 
-    <!-- 2 — The idea -->
+    <!-- 2 — Motivation -->
     <section class="slide">
-      <div class="kicker">The idea</div>
-      <h2>Neural networks are usually a black box.</h2>
-      <p class="lead">Most tools show you a network's <i>architecture</i> or its final <i>accuracy</i>. TensorCanvas lets you watch it <b>compute</b> and reach in and <b>change it</b> — from a 3-neuron toy to a 62M-parameter pretrained AlexNet, in the same canvas.</p>
-      <div class="pipe">
-        <span class="stage" style="border-color:rgba(79,140,255,.5)">① Build</span>
-        <span class="arrow">→</span>
-        <span class="stage" style="border-color:rgba(56,189,248,.5)">② Train</span>
-        <span class="arrow">→</span>
-        <span class="stage" style="border-color:rgba(167,139,250,.5)">③ Observe</span>
-        <span class="arrow">→</span>
-        <span class="stage" style="border-color:rgba(245,158,11,.5)">④ Intervene</span>
+      <div class="kicker">Motivation</div>
+      <h2>The whole AI field is racing to open the black box.</h2>
+      <p class="lead" style="margin-top:14px">A major research direction right now — <b>mechanistic interpretability</b> — is about looking <i>inside</i> models: finding the concepts they represent internally, and even changing them. The striking result isn't just <i>reading</i> the model, it's <b>surgically editing its internals to steer its behaviour</b>.</p>
+      <div class="callout">
+        <div class="q">🌉 <b>Golden Gate Claude</b> (Anthropic, 2024): researchers located an internal <i>feature</i> inside Claude 3 and simply <b>amplified it</b> — the model became obsessed with the Golden Gate Bridge. "Not a prompt, not fine-tuning — a precise, surgical change to the model's internal activations."</div>
+        <div class="cite">Scaling Monosemanticity — Anthropic, May 2024 · <a href="https://www.anthropic.com/news/golden-gate-claude">anthropic.com/news/golden-gate-claude</a><br>See also: "Language models can explain neurons in language models" — OpenAI, 2023.</div>
       </div>
-      <p class="lead" style="margin-top:22px;color:var(--faint)">Under the hood it's a <b>graph compiler with a drawing UI</b>: the canvas graph becomes a real PyTorch model that we run, train, and inspect.</p>
-      <div class="foot">Build → Train → Observe → Intervene</div>
+      <p class="lead" style="margin-top:18px">These are frontier-lab tools on billion-parameter models. <b>TensorCanvas brings the same idea down to earth</b>: see activations fire layer-by-layer and reach in and edit the weights — on networks a student can build, train, and understand end-to-end.</p>
+      <div class="foot">Interpretability · see inside · intervene</div>
     </section>
 
-    <!-- 3 — Features + demo -->
+    <!-- 3 — Why open source -->
+    <section class="slide">
+      <div class="kicker">Why open source</div>
+      <h2>An interpretability tool is worth more shared.</h2>
+      <p class="lead" style="margin-top:12px">A tool for <i>understanding</i> models is educational by nature — it should be free to use, inspect, reproduce, and extend. So we open-sourced it and made it genuinely extensible (add a layer, dataset, or pretrained model with a documented recipe).</p>
+      <ul>
+        <li><span class="dot" style="color:var(--a-hi)"></span><span><b>License → Apache-2.0.</b> <span class="d">Permissive (anyone can use/modify/extend) <b>and</b> the only mainstream permissive license with an explicit <b>patent grant + retaliation</b> — the right fit for a tool implementing published NN algorithms, and the ML-ecosystem standard (TensorFlow, Keras, JAX, Hugging Face).</span></span></li>
+        <li><span class="dot" style="color:var(--emerald)"></span><span><b>Why not the others.</b> <span class="d">MIT/BSD are permissive but lack the patent grant; GPL/AGPL are copyleft — hostile to free reuse. Every dependency we use is permissive (MIT/BSD), so there are <b>no license conflicts</b>.</span></span></li>
+        <li><span class="dot" style="color:var(--violet)"></span><span><b>Code vs data.</b> <span class="d">Pretrained weights carry ImageNet's non-commercial research/education terms — so we download them at runtime and <b>never redistribute</b> them.</span></span></li>
+        <li><span class="dot" style="color:var(--amber)"></span><span><b>Community-ready.</b> <span class="d">Apache LICENSE + NOTICE, Code of Conduct, Contributing guide, Security policy, extension recipes, and a citable <code>CITATION.cff</code>.</span></span></li>
+      </ul>
+      <div class="foot">Apache-2.0 · permissive + patent grant · fully extensible</div>
+    </section>
+
+    <!-- 4 — Features / demo -->
     <section class="slide">
       <div class="grid2">
         <div>
@@ -119,16 +133,16 @@
             <li><span class="dot" style="color:var(--sky)"></span><span><b>Visual builder</b> — <span class="d">drag nodes, set weights / bias / activations, compile to PyTorch with per-node error checks.</span></span></li>
             <li><span class="dot" style="color:var(--emerald)"></span><span><b>Live training</b> — <span class="d">upload data, configure optimizer/loss/scheduler, stream metrics over SSE with checkpoints.</span></span></li>
             <li><span class="dot" style="color:var(--violet)"></span><span><b>Forward-pass replay</b> — <span class="d">watch neurons fire layer by layer with labelled activations + predictions.</span></span></li>
-            <li><span class="dot" style="color:var(--amber)"></span><span><b>Live intervention</b> — <span class="d">edit a weight in place, re-run, compare.</span></span></li>
+            <li><span class="dot" style="color:var(--amber)"></span><span><b>Live intervention</b> — <span class="d">edit a weight in place, re-run, compare — the black-box idea, hands-on.</span></span></li>
             <li><span class="dot" style="color:var(--sky)"></span><span><b>Real pretrained nets</b> — <span class="d">load AlexNet / VGG-16 and classify any image (top-5 ImageNet).</span></span></li>
           </ul>
         </div>
         <div class="shot"><img src="screenshots/build.png" alt="TensorCanvas Build view" /></div>
       </div>
-      <div class="foot">Build · Train · Observe · Pretrained</div>
+      <div class="foot">Build · Train · Observe · Intervene · Pretrained</div>
     </section>
 
-    <!-- 4 — Architecture / thanks -->
+    <!-- 5 — Architecture / thanks -->
     <section class="slide">
       <div class="kicker">How it's built</div>
       <h2>A thin JSON wire between a browser studio and PyTorch.</h2>
@@ -144,10 +158,10 @@
         <span class="chip">Zustand · React Flow</span>
         <span class="chip">FastAPI · Uvicorn · PyTorch (CPU)</span>
         <span class="chip">uv · torchvision</span>
-        <span class="chip">Apache-2.0 · community-extensible</span>
+        <span class="chip">Apache-2.0 · extensible</span>
       </div>
-      <p class="lead" style="margin-top:26px">Open-source and built to extend — adding a layer type, dataset format, or pretrained model is a small, documented change.</p>
-      <div class="tagline" style="margin-top:26px">Thank you — questions?</div>
+      <p class="lead" style="margin-top:24px">The canvas graph becomes a real PyTorch model we run, train, and inspect — and adding a layer type, dataset format, or pretrained model is a small, documented change.</p>
+      <div class="tagline" style="margin-top:24px">Thank you — questions?</div>
       <div class="foot">github.com/Swapnil-Kapale/tensorcanvas · Apache-2.0</div>
     </section>
 
